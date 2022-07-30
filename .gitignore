@@ -1,0 +1,8 @@
+*.env
+*.log
+*.secret
+
+.idea/
+node_modules/
+build/
+flattened/

@@ -1,0 +1,20 @@
+{
+  "name": "verified-liquidity-kyber",
+  "version": "0.1.0",
+  "description": "Integration to Kyber Network for liquidity",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Kallol Borah",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@truffle/hdwallet-provider": "^1.4.3",
+    "@uniswap/v2-core": "^1.0.1",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
+    "dotenv": "^10.0.0"
+  }
+}
