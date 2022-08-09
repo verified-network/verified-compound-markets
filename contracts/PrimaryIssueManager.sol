@@ -9,6 +9,7 @@ pragma experimental ABIEncoderV2;
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import './interfaces/IPrimaryIssuePool.sol';
 import './interfaces/VerifiedClient.sol';
@@ -17,19 +18,20 @@ import './interfaces/ILiquidity.sol';
 import './interfaces/IFactory.sol';
 import './interfaces/ISecurity.sol';
 
-contract PrimaryIssueManager is IMarketMaker{
+import './dmm/DMMFactory.sol';
+import './dmm/periphery/DMMRouter02.sol';
+
+contract PrimaryIssueManager is IMarketMaker, Ownable{
 
     using SafeMath for uint256;
 
     uint256 swapFeePercentage=0;
-    address deployer;
+
+    // DMM references
+    DMMFactory dmmfactory;
+    DMMRouter02 dmmrouter;
 
     // modifiers
-    modifier onlyOwner(address caller) {
-        require(caller==deployer);
-        _;
-    }
-
     modifier onlyPool(bytes32 poolId, address security) {
         //require(poolId == IPrimaryIssuePool(security).getPoolId());
         _;
@@ -140,8 +142,9 @@ contract PrimaryIssueManager is IMarketMaker{
         @param  _swapFeePercentage  percentage of trading fee to be charged by the asset manager
         @param  _products           reference to the Verified Products contract that this contract reports created primary issue pools to
      */
-    function initialize(uint256 _swapFeePercentage, address _products, address _liquidity, address _client, address _bridge) public {
-        deployer = msg.sender;
+    function initialize(address _dmmfactory, address payable _dmmrouter, uint256 _swapFeePercentage, address _products, address _liquidity, address _client, address _bridge) onlyOwner public {
+        dmmfactory = DMMFactory(_dmmfactory);
+        dmmrouter = DMMRouter02(_dmmrouter);
         swapFeePercentage = _swapFeePercentage;
         products = IFactory(_products);
         emit platforms(address(this));
@@ -150,7 +153,7 @@ contract PrimaryIssueManager is IMarketMaker{
         bridge = _bridge;
     }
 
-    function setSigner(address _signer) onlyOwner(msg.sender) external{
+    function setSigner(address _signer) onlyOwner external{
         bridge = _signer;
     }
 
@@ -502,7 +505,7 @@ contract PrimaryIssueManager is IMarketMaker{
     }   
 
     function getOwner() override external view returns(address){
-        return deployer;
+        return owner();
     }
    
 }

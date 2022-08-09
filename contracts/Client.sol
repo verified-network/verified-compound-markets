@@ -6,11 +6,10 @@
 pragma solidity ^0.6.12;
 
 import "./interfaces/VerifiedClient.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract Client is VerifiedClient {
+contract Client is VerifiedClient, Ownable {
     
-    address owner;
-
     //bridge
     address bridge;
 
@@ -33,17 +32,11 @@ contract Client is VerifiedClient {
     event ManagerAdded(address manager, address indexed submanager, bytes32 role, bytes32 country, bytes32 managerId);
     event ManagerRemoved(address manager, address indexed submanager, bytes32 role, bytes32 country);
 
-    modifier onlyOwner(address caller) {
-        require(caller==owner);
-        _;
-    }
-
-    function initialize(address _signer) public {
-        owner = msg.sender;
+    function initialize(address _signer) onlyOwner public {
         bridge = _signer;
     }
 
-    function setSigner(address _signer) onlyOwner(msg.sender) override external{
+    function setSigner(address _signer) onlyOwner override external{
         bridge = _signer;
     }
     
@@ -69,7 +62,7 @@ contract Client is VerifiedClient {
                 return (roles[submanagers[position-1]].role, roles[submanagers[position-1]].id);
             }
         }
-        if(_user==owner)
+        if(_user==owner())
             return ("Admin","");
         else
             return ("","");
