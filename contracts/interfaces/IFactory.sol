@@ -2,7 +2,7 @@
 // Interface definition of the Via cash and bond factory.
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.6;
+pragma solidity 0.6.12;
 
 interface IFactory{
 

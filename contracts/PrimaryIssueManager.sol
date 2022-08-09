@@ -3,12 +3,12 @@
 
 //"SPDX-License-Identifier: UNLICENSED"
 
-pragma solidity ^0.6.6;
+pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
-import './sol6/IERC20.sol';
-import './sol6/utils/zeppelin/SafeERC20.sol';
-import "./sol6/utils/zeppelin/SafeMath.sol";
+import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
+import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import './interfaces/IPrimaryIssuePool.sol';
 import './interfaces/VerifiedClient.sol';

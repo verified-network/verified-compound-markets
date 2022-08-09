@@ -2,7 +2,7 @@
 // Client interface
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.6;
+pragma solidity 0.6.12;
 
 interface VerifiedClient{
 
