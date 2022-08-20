@@ -6,31 +6,32 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
-import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import './interfaces/IPrimaryIssuePool.sol';
-import './interfaces/VerifiedClient.sol';
-import './interfaces/IMarketMaker.sol';
-import './interfaces/ILiquidity.sol';
-import './interfaces/IFactory.sol';
-import './interfaces/ISecurity.sol';
+import "./interfaces/IPrimaryIssuePool.sol";
+import "./interfaces/VerifiedClient.sol";
+import "./interfaces/IMarketMaker.sol";
+import "./interfaces/ILiquidity.sol";
+import "./interfaces/IFactory.sol";
+import "./interfaces/ISecurity.sol";
 
-import './dmm/DMMFactory.sol';
-import './dmm/periphery/DMMRouter02.sol';
+import "./dmm/DMMFactory.sol";
+import "./dmm/periphery/DMMRouter02.sol";
 
 contract PrimaryIssueManager is IMarketMaker, Ownable{
 
     using SafeMath for uint256;
 
     uint256 swapFeePercentage=0;
+    address primaryissuepool;
 
     // DMM references
     DMMFactory dmmfactory;
     DMMRouter02 dmmrouter;
-
+    
     // modifiers
     modifier onlyPool(bytes32 poolId, address security) {
         //require(poolId == IPrimaryIssuePool(security).getPoolId());
@@ -67,10 +68,12 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
     mapping(address => mapping(address => uint256)) private pairedTokenIndex;
 
     struct liquidity{
-        uint minPrice;
-        uint maxPrice;
-        uint amountIssued;
-        uint amountOffered;
+        uint minRatio;
+        uint maxRatio;
+        uint desiredSecurity;
+        uint desiredCash;
+        uint minimumSecurity;
+        uint minimumCash;
     }
 
     // mapping qualified liquidity token to its price and amount offered by market makers (LPs)
@@ -142,15 +145,16 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
         @param  _swapFeePercentage  percentage of trading fee to be charged by the asset manager
         @param  _products           reference to the Verified Products contract that this contract reports created primary issue pools to
      */
-    function initialize(address _dmmfactory, address payable _dmmrouter, uint256 _swapFeePercentage, address _products, address _liquidity, address _client, address _bridge) onlyOwner public {
+    function initialize(address _dmmfactory, address payable _dmmrouter, address _primaryissuepool, uint256 _swapFeePercentage, address _products, address _liquidity, address _client, address _bridge) onlyOwner public {
         dmmfactory = DMMFactory(_dmmfactory);
         dmmrouter = DMMRouter02(_dmmrouter);
+        primaryissuepool = _primaryissuepool;
         swapFeePercentage = _swapFeePercentage;
-        products = IFactory(_products);
-        emit platforms(address(this));
+        products = IFactory(_products);        
         client = VerifiedClient(_client);
         LiquidityContract = _liquidity;
         bridge = _bridge;
+        emit platforms(address(this));
     }
 
     function setSigner(address _signer) onlyOwner external{
@@ -296,34 +300,44 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
                                             pairedTokenIndex[security][cash] = pairedTokens[security].length;                                            
                                         }
                                         
-                                        // find and store min price for token offered
+                                        if(mmtokens[security][cash][0].min < qlTokens[security][cash].minimumSecurity  || 
+                                            qlTokens[security][cash].minimumSecurity==0)
+                                            qlTokens[security][cash].minimumSecurity = mmtokens[security][cash][0].min;
+
+                                        if(mmtokens[cash][security][k].min < qlTokens[cash][security].minimumCash  || 
+                                            qlTokens[cash][security].minimumCash==0)
+                                            qlTokens[cash][security].minimumCash = mmtokens[cash][security][k].min;
+
+                                        if(mmtokens[security][cash][0].amountOffered > qlTokens[security][cash].desiredSecurity  || 
+                                            qlTokens[security][cash].desiredSecurity==0)
+                                            qlTokens[security][cash].desiredSecurity = mmtokens[security][cash][0].amountOffered;
+
+                                        if(mmtokens[cash][security][k].amountOffered > qlTokens[cash][security].desiredCash  || 
+                                            qlTokens[cash][security].desiredCash==0)
+                                            qlTokens[cash][security].desiredCash = mmtokens[cash][security][k].amountOffered;
+
+                                        // find and store min price ratio
                                         if(SafeMath.div(mmtokens[security][cash][0].min,
                                             mmtokens[security][cash][0].amountOffered) < 
-                                            qlTokens[security][cash].minPrice  || 
-                                            qlTokens[security][cash].minPrice==0)
+                                            qlTokens[security][cash].minRatio  || 
+                                            qlTokens[security][cash].minRatio==0)
                                         {   
-                                            qlTokens[security][cash].minPrice = 
+                                            qlTokens[security][cash].minRatio = 
                                                         SafeMath.div(mmtokens[security][cash][0].min,
                                                         mmtokens[security][cash][0].amountOffered);
                                         }
                                         
-                                        // find and store max price for token offered
+                                        // find and store max price ratio
                                         if(SafeMath.div(mmtokens[cash][security][k].amountOffered,
                                             mmtokens[cash][security][k].min) > 
-                                            qlTokens[security][cash].maxPrice)
+                                            qlTokens[security][cash].maxRatio || 
+                                            qlTokens[security][cash].maxRatio==0)
                                         {   
-                                            qlTokens[security][cash].maxPrice = 
+                                            qlTokens[security][cash].maxRatio = 
                                                         SafeMath.div(mmtokens[cash][security][k].amountOffered,
                                                         mmtokens[cash][security][k].min);                                        
                                         }  
                                         
-                                        qlTokens[security][cash].amountIssued = 
-                                                        SafeMath.add(qlTokens[security][cash].amountIssued,
-                                                        mmtokens[security][cash][0].amountOffered);
-                                        qlTokens[security][cash].amountOffered = 
-                                                        SafeMath.add(qlTokens[security][cash].amountOffered,
-                                                        mmtokens[cash][security][k].amountOffered); 
-
                                         // store qualified liquidity provider info
                                         lp memory provider = lp({
                                             owner : mmtokens[cash][security][k].owner,
@@ -347,36 +361,29 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
             //create primary issue pool if it does not exist already
             for(uint x=0; x<pairedTokens[security].length; x++){
                 address lptoken = pairedTokens[security][x];
-                /*IPrimaryIssuePoolFactory.FactoryPoolParams memory poolparams = IPrimaryIssuePoolFactory.FactoryPoolParams({
-                    security : security,
-                    currency : lptoken,
-                    minimumPrice : qlTokens[security][lptoken].minPrice,
-                    basePrice : qlTokens[security][lptoken].maxPrice,
-                    maxAmountsIn : qlTokens[security][lptoken].amountIssued,
-                    issueFeePercentage : swapFeePercentage,
-                    cutOffTime : cutoffTime
-                });
-                address newIssue = factory.create(poolparams);*/
+                uint32 amplitude = uint32(SafeMath.div(qlTokens[security][lptoken].maxRatio, qlTokens[security][lptoken].minRatio));
+                address newIssue = dmmfactory.createPool(IERC20(security), IERC20(lptoken), amplitude);
                 // store details of new pool created
                 issues[security].issuer = mmtokens[security][lptoken][0].owner;
                 issues[security].deadline = cutoffTime;
                 issues[security].startTime = block.timestamp;
-                /*bytes32 pool = IPrimaryIssuePool(newIssue).getPoolId();                
+                bytes32 pool = stringToBytes32(DMMPool(newIssue).name());                
                 issues[security].pools[issues[security].pools.length] = pool;
                 pools[pool] = newIssue;
                 poolSecurity[pool] = security;
                 // initialize the pool here
-                vault.setRelayerApproval(address(this), newIssue, true);
-                IPrimaryIssuePool(newIssue).initialize();
-                // take right to manage pool
-                IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](1);
-                ops[0] = IVault.PoolBalanceOp({
-                    kind: IVault.PoolBalanceOpKind.WITHDRAW,
-                    poolId: pool,
-                    token: IERC20(lptoken),
-                    amount: qlTokens[security][lptoken].amountIssued
-                });
-                vault.managePoolBalance(ops);*/
+                IERC20[2] memory tokens = [IERC20(security), IERC20(lptoken)];
+                uint256[5] memory amounts = [qlTokens[security][lptoken].desiredSecurity, qlTokens[security][lptoken].desiredCash,
+                                            qlTokens[security][lptoken].minimumSecurity, qlTokens[security][lptoken].minimumCash, cutoffTime];
+                dmmrouter.addLiquidityNewPool(  tokens[0], 
+                                                tokens[1], 
+                                                amplitude, 
+                                                amounts[0],
+                                                amounts[1],
+                                                amounts[2],
+                                                amounts[3], 
+                                                primaryissuepool, 
+                                                amounts[4]);                                        
                 delete qlTokens[security][lptoken];
             }
             delete pairedTokens[security];
@@ -442,7 +449,7 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
         if(i>0)
             invested = SafeMath.add(invested, investors[poolid][i-1].amount);
         // transfer subscriptions for allotments to asset manager for asset subscribed with
-        /*address issued = IPrimaryIssuePool(pools[poolid]).getSecurity();
+        address issued = poolSecurity[poolid];
         // refund balance to investors
         IERC20(asset).transfer(investor, SafeMath.sub(invested, amnt));
         for(i=0; i<liquidityProviders[issued].length; i++){
@@ -461,7 +468,7 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
                     amnt = SafeMath.sub(amnt, prorataAmount);
                 }
             }
-        }*/
+        }
     }
 
     /**
@@ -491,7 +498,6 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
         @param  poolId  identifier for primary issue pool
      */  
     function settleIssue(bytes32 poolId) private {
-        //IPrimaryIssuePool(pools[poolId]).exit(); 
         uint256 totalLiquidityProvided = totalUnderwritten[poolSecurity[poolId]];
         uint256 underwritingFee = SafeMath.mul(totalLiquidityProvided, swapFeePercentage);
         uint256 prorataLiquidityProvided =0;
@@ -506,6 +512,17 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
 
     function getOwner() override external view returns(address){
         return owner();
+    }
+
+    function stringToBytes32(string memory source) public pure returns (bytes32 result) {
+        bytes memory tempEmptyStringTest = bytes(source);
+        if (tempEmptyStringTest.length == 0) {
+            return 0x0;
+        }
+
+        assembly {
+            result := mload(add(source, 32))
+        }
     }
    
 }
