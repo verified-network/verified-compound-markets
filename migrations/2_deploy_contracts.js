@@ -2,8 +2,6 @@
 // deploying market maker for Kyber
 
 const PrimaryIssueManager = artifacts.require('PrimaryIssueManager');    
-const PrimaryIssuePool = artifacts.require('PrimaryIssuePool');    
-const PrimaryIssueRouter = artifacts.require('IUniswapV2Router02');           
 const Client = artifacts.require('Client');
 
 const PoolIssueFee = web3.utils.toWei('0.01'); //1%
@@ -17,15 +15,14 @@ const DMMRouter = '0x96E8B9E051c81661C36a18dF64ba45F86AC80Aae'; //Ropsten addres
 module.exports = function(deployer, network, accounts) {
     
     deployer.deploy(Client);
-    deployer.deploy(PrimaryIssueManager);
-    const primarymarketmaker = await PrimaryIssueManager.deployed();
+    deployer.deploy(PrimaryIssueManager);    
 
-    deployer.deploy(PrimaryIssueRouter, DMMFactory, primarymarketmaker).then(async () => {
-        const primaryissuepool = await PrimaryIssuePool.deployed();
+    deployer.deploy().then(async () => {
         const client = await Client.deployed();
+        const primarymarketmaker = await PrimaryIssueManager.deployed();
 
-        console.log("Contracts @ PrimaryManager "+primarymarketmaker.address+" Primary Pool "+primaryissuepool.address+" Client "+client.address);
-        await primarymarketmaker.initialize(DMMFactory, DMMRouter, primaryissuepool.address, PoolIssueFee, Factory, Liquidity, client.address, Bridge);  
+        console.log("Contracts @ PrimaryManager "+primarymarketmaker.address+" Client "+client.address);
+        await primarymarketmaker.initialize(DMMFactory, DMMRouter, PoolIssueFee, Factory, Liquidity, client.address, Bridge);  
         await client.initialize(Bridge);
     });
 

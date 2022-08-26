@@ -45,7 +45,7 @@ interface IMarketMaker {
 
     function issue(address security, uint256 cutoffTime, address issuer, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) external;
 
-    function subscribe(bytes32 poolId, address security, address assetIn, string calldata assetName, uint256 amount, address investor, uint256 price, bool paidIn) external;
+    function subscribe(address security, address asset, string calldata assetName, uint256 amount, address investor, uint256 price, bool paidIn, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) external;
 
     function close(address security, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) external; //returns(bytes32[] memory, bool);
 
