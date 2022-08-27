@@ -101,8 +101,8 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
     // mapping pool id to asset to subscription amounts
     mapping(bytes32 => mapping(address => uint256)) private subscribed;
 
-    // mapping security and cash address to pool id
-    mapping(address => mapping(address => bytes32)) private pools;
+    // mapping security and cash address to pool address
+    mapping(address => mapping(address => address)) private pools;
 
     // liquidity pool tokens
     struct liquidityToken{
@@ -256,21 +256,21 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
      */
     function getAllotedStake() override external view returns(uint256){
         return LPTokenAllotted[msg.sender];
-    }
-
-    function issue(address security, uint256 cutoffTime, address issuer, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) override external {
-        bytes32 payloadHash = keccak256(abi.encode(_hashedMessage, "L2toL1"));
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", payloadHash));
-        require(ecrecover(messageHash, _v, _r, _s)== bridge);
-        requestIssue(security, cutoffTime, issuer);
-    }
+    }    
     
     /**
         Called by issuer of 'security' token to open an issue which will last till 'cutoffTime'
         @param  security    security offered to the primary issue pool
         @param  cutoffTime  time in milliseconds by when offer closes
      */
-    function requestIssue(address security, uint256 cutoffTime, address issuer) private {
+    function issue(address security, uint256 cutoffTime, address issuer, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) override external {
+        bytes32 payloadHash = keccak256(abi.encode(_hashedMessage, "L2toL1"));
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", payloadHash));
+        require(ecrecover(messageHash, _v, _r, _s)== bridge);
+        onIssue(security, cutoffTime, issuer);
+    }
+
+    function onIssue(address security, uint256 cutoffTime, address issuer) private {
         // check if security to be issued has been offered by the issuer, and if yes, initialize the issuance
         uint i = offeredTokenIndex[security]-1;
         address cash;
@@ -370,7 +370,7 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
                 issues[security].deadline = cutoffTime;
                 issues[security].currency[issues[security].currency.length] = lptoken;
                 issues[security].pools[issues[security].pools.length] = newIssue;
-                pools[security][lptoken] = stringToBytes32(DMMPool(newIssue).name());
+                pools[security][lptoken] = newIssue;
                 poolSecurity[stringToBytes32(DMMPool(newIssue).name())] = security;
                 // initialize the pool here
                 IERC20[2] memory tokens = [IERC20(security), IERC20(lptoken)];
@@ -396,9 +396,8 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
 
     // called by bridge when assets are swapped in by investors against security tokens issued
     function subscribe(address security, address asset, string calldata assetName, uint256 amount, address investor, uint256 price, bool paidIn, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) override external {
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encode(_hashedMessage, "L2toL1"))));
-        require(ecrecover(messageHash, _v, _r, _s)== bridge);
-        bytes32 poolId = pools[security][asset];
+        require(ecrecover(keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encode(_hashedMessage, "L2toL1")))), _v, _r, _s)== bridge);
+        bytes32 poolId = stringToBytes32(DMMPool(pools[security][asset]).name());
         investors[poolId].push(IMarketMaker.subscriptions(investor, asset, assetName, amount, price));
         if(subscriberIndex[poolId][investor]==0)
             subscriberIndex[poolId][investor] = investors[poolId].length;
@@ -412,31 +411,33 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
         Called by issuer to close subscription of 'security' issued by it
         @param  security    address of security token
     */  
-    function close(address security, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) override external {//returns(bytes32[] memory, bool) {
+    function close(address security, bool redeem, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) override external {//returns(bytes32[] memory, bool) {
         bytes32 payloadHash = keccak256(abi.encode(_hashedMessage, "L2toL1"));
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", payloadHash));
         require(ecrecover(messageHash, _v, _r, _s)== bridge);
-        onClosure(security);
+        onClosure(security, redeem);
     }
 
-    function onClosure(address security) private {
+    function onClosure(address security, bool redeem) private {
         if(block.timestamp > issues[security].deadline){  
             //return (issues[security].pools, true);
             emit onClose(security, issues[security].pools, true, address(this));
         }
         else
             //return (issues[security].pools, false);
-            emit onClose(security, issues[security].pools, false, address(this));
-        /*for(uint256 i=0; i<issues[security].pools.length; i++){                      
-            dmmrouter.removeLiquidity(  IERC20(security), 
-                                        IERC20(issues[security].currency), 
-                                        issues[security].pools[i],   
-                                        poolTokens[security][issues[security].currency].acquiredLiquidityTokens, 
-                                        poolTokens[security][issues[security].currency].providedSecurity, 
-                                        poolTokens[security][issues[security].currency].providedCurrency,
-                                        address(this), 
-                                        block.timestamp);
-        }*/        
+            emit onClose(security, issues[security].pools, false, address(this)); 
+        if(redeem){
+            for(uint256 i=0; i<issues[security].pools.length; i++){                      
+                dmmrouter.removeLiquidity(  IERC20(security), 
+                                            IERC20(issues[security].currency[i]), 
+                                            issues[security].pools[i],   
+                                            poolTokens[security][issues[security].currency[i]].acquiredLiquidityTokens, 
+                                            poolTokens[security][issues[security].currency[i]].providedSecurity, 
+                                            poolTokens[security][issues[security].currency[i]].providedCurrency,
+                                            address(this), 
+                                            block.timestamp);
+            }  
+        }             
     }
 
     /**
