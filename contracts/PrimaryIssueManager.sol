@@ -395,6 +395,15 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
     }
 
     // called by bridge when assets are swapped in by investors against security tokens issued
+    function onSubscription(address pool, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) override external returns(address, address, string memory){
+        require(ecrecover(keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encode(_hashedMessage, "L2toL1")))), _v, _r, _s)== bridge);
+        address security = poolSecurity[stringToBytes32(DMMPool(pool).name())];
+        for(uint256 i=0; i<issues[security].currency.length; i++){
+            if(pools[security][issues[security].currency[i]]==pool)
+                return (security, issues[security].currency[i], ERC20(issues[security].currency[i]).name());
+        }
+    }
+
     function subscribe(address security, address asset, string calldata assetName, uint256 amount, address investor, uint256 price, bool paidIn, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) override external {
         require(ecrecover(keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encode(_hashedMessage, "L2toL1")))), _v, _r, _s)== bridge);
         bytes32 poolId = stringToBytes32(DMMPool(pools[security][asset]).name());
