@@ -472,8 +472,11 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
         // transfer subscriptions for allotments to asset manager for asset subscribed with
         address issued = poolSecurity[poolid];
         // refund balance to investors
-        if(investors[poolid][i-1].amount > amnt)
+        if(investors[poolid][i-1].amount > amnt){
             IERC20(asset).transfer(investor, SafeMath.sub(investors[poolid][i-1].amount, amnt));
+            IERC20(poolSecurity[poolid]).transferFrom(investor, address(this), 
+                SafeMath.mul(IERC20(poolSecurity[poolid]).balanceOf(investor), SafeMath.div(amnt, investors[poolid][i-1].amount)));
+        }
         for(i=0; i<liquidityProviders[issued].length; i++){
             if(liquidityProviders[issued][i].tokenOffered==asset && amnt!=0){
                 uint256 proportionUnderwritten = liquidityProviders[issued][i].underwritten / totalUnderwritten[issued];
@@ -504,6 +507,7 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
         require(ecrecover(messageHash, _v, _r, _s)== bridge);
         uint256 i = subscriberIndex[poolid][investor];
         if(i>0){
+            IERC20(poolSecurity[poolid]).transferFrom(investor, address(this), IERC20(poolSecurity[poolid]).balanceOf(investor));
             IERC20(investors[poolid][i-1].asset).transfer(investor, investors[poolid][i-1].amount);
         }
     }    
