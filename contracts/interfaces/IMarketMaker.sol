@@ -49,7 +49,7 @@ interface IMarketMaker {
 
     function subscribe(address security, address asset, string calldata assetName, uint256 amount, address investor, uint256 price, bool paidIn, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) external;
 
-    function close(address security, bool redeem, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) external; //returns(bytes32[] memory, bool);
+    function close(address security, bool redeem, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) external returns(bytes32[] memory, bool);
 
     function getSubscribers(bytes32 poolId, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) external returns(subscriptions[] memory);
 

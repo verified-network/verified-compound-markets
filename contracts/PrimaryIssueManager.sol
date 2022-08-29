@@ -85,7 +85,7 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
     struct primary{
         uint256 deadline;
         address issuer;
-        address[] pools;        
+        bytes32[] pools;        
         address[] currency;
     }
 
@@ -141,7 +141,7 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
     event marketmakers(address security, address platform, lp[] providers);
     event subscribers(address security, address platform, bytes32 poolId, subscriptions[] investors);
     event platforms(address platform);
-    event onClose(address security, address[] pools, bool close, address platform);
+    event closures(address security, bytes32[] pools, bool close, address platform);
 
     /**
         Initializes this asset management contract
@@ -369,7 +369,7 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
                 issues[security].issuer = mmtokens[security][lptoken][0].owner;
                 issues[security].deadline = cutoffTime;
                 issues[security].currency[issues[security].currency.length] = lptoken;
-                issues[security].pools[issues[security].pools.length] = newIssue;
+                issues[security].pools[issues[security].pools.length] = stringToBytes32(DMMPool(newIssue).name());
                 pools[security][lptoken] = newIssue;
                 poolSecurity[stringToBytes32(DMMPool(newIssue).name())] = security;
                 // initialize the pool here
@@ -420,33 +420,34 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
         Called by issuer to close subscription of 'security' issued by it
         @param  security    address of security token
     */  
-    function close(address security, bool redeem, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) override external {//returns(bytes32[] memory, bool) {
+    function close(address security, bool redeem, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) override external returns(bytes32[] memory, bool) {
         bytes32 payloadHash = keccak256(abi.encode(_hashedMessage, "L2toL1"));
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", payloadHash));
         require(ecrecover(messageHash, _v, _r, _s)== bridge);
-        onClosure(security, redeem);
+        return onClose(security, redeem);
     }
 
-    function onClosure(address security, bool redeem) private {
-        if(block.timestamp > issues[security].deadline){  
-            //return (issues[security].pools, true);
-            emit onClose(security, issues[security].pools, true, address(this));
-        }
-        else
-            //return (issues[security].pools, false);
-            emit onClose(security, issues[security].pools, false, address(this)); 
+    function onClose(address security, bool redeem) private returns(bytes32[] memory, bool){
         if(redeem){
             for(uint256 i=0; i<issues[security].pools.length; i++){                      
                 dmmrouter.removeLiquidity(  IERC20(security), 
                                             IERC20(issues[security].currency[i]), 
-                                            issues[security].pools[i],   
+                                            pools[security][issues[security].currency[i]],   
                                             poolTokens[security][issues[security].currency[i]].acquiredLiquidityTokens, 
                                             poolTokens[security][issues[security].currency[i]].providedSecurity, 
                                             poolTokens[security][issues[security].currency[i]].providedCurrency,
                                             address(this), 
                                             block.timestamp);
             }  
-        }             
+        }   
+        if(block.timestamp > issues[security].deadline){              
+            emit closures(security, issues[security].pools, true, address(this));
+            return (issues[security].pools, true);
+        }
+        else{
+            emit closures(security, issues[security].pools, false, address(this)); 
+            return (issues[security].pools, false);
+        }     
     }
 
     /**
