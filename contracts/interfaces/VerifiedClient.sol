@@ -14,4 +14,7 @@ interface VerifiedClient{
 
     function setSigner(address _signer) external;
 
+    function KycUpdate(address client, bytes32 name, bytes32 surname, bytes32 country, uint status, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s) external;
+
+    function getTransferAgent(address party) external view returns(bytes32);
 }

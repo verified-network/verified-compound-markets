@@ -42,6 +42,16 @@ module.exports = {
             timeoutBlocks: 200,  
             skipDryRun: true  
         },
+        goerli: {
+            //provider: () => new HDWalletProvider(mnemonic, "wss://eth-kovan.alchemyapi.io/v2/yCwExvTCIvYy2IfvGTEvvkP0w7QHz4Yf"),
+            provider: () => new HDWalletProvider(mnemonic, "wss://goerli.infura.io/ws/v3/f77b6dfe988c484595d679cd2ca13f80"), //test
+            network_id: 5,
+            gas: 6721975,
+            gasPrice: 10000000000,
+            confirmations: 2,    
+            timeoutBlocks: 200,  
+            skipDryRun: true  
+        },
         rinkeby: {
             //provider: () => new HDWalletProvider(mnemonic, "wss://rinkeby.infura.io/ws/v3/8151436a27dd4cdab264fa3ebf60a090"), //test
             provider: () => new HDWalletProvider(mnemonic, "wss://rinkeby.infura.io/ws/v3/2bdfb8680f2443d09420292049546e60"), //production
