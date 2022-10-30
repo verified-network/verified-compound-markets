@@ -61,9 +61,9 @@ interface IMarketMaker {
 
     function getLiquidityProviders(address _security/*, bytes32 _hashedMessage, uint8 _v, bytes32 _r, bytes32 _s*/) external returns(lp[] memory);
 
-    function stake(uint256 amount, address manager) external;
+    function stake(uint256 _amount, address _token, address _manager) external;
 
-    function getAllotedStake() external view returns(uint256);
+    function getAllotedStake(address _token) external view returns(uint256);
 
     function getOfferMade(address _owned, address _tomatch) external view returns(token[] memory);
 

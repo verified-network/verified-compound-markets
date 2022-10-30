@@ -125,12 +125,9 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
 
     // reference to the Verified Liquidity contract that provides liquidity (ie, VITTA) to the asset manager to underwrite investments in tokenized securities
     address private LiquidityContract;
-    
-    // LP token staked
-    uint256 private LPTokenStaked;
 
     // LP token allotted
-    mapping(address => uint256) private LPTokenAllotted;
+    mapping(address => mapping(address => uint256)) private LPTokenAllotted;
 
     //mutex
     bool lock;
@@ -186,8 +183,9 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
         (bytes32 role, ) = client.getRole(msg.sender);
         require(products.checkProduct(owned)==true || role=='AM');
         if(role=="AM"){
-            if(ERC20(owned).balanceOf(msg.sender)>=offered){                 
+            if(ERC20(owned).balanceOf(msg.sender)>=offered && LPTokenAllotted[msg.sender][owned]>=offered){                 
                 ERC20(owned).transferFrom(msg.sender, address(this), offered);
+                LPTokenAllotted[msg.sender][owned] = SafeMath.sub(LPTokenAllotted[msg.sender][owned], offered);
                 make(msg.sender, owned, isin, offered, tomatch, desired, min); 
             }
         }
@@ -243,20 +241,22 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
     }
 
     /**
-        Called by Liquidity token contract to stake liquidity tokens by investors in VITTA
-        @param  amount  amount of VITTA staked to provide liquidity for underwriting investments in tokenized securities
+        Called by Liquidity token contract to stake tokens by investors
+        @param  _amount     amount of tokens staked to provide liquidity for underwriting investments in tokenized securities
+        @param  _token      address of token staked
+        @param  _manager    address of asset manager
      */
-    function stake(uint256 amount, address manager) override onlyLP(msg.sender) external {
-        LPTokenStaked = SafeMath.add(LPTokenStaked, amount);
-        LPTokenAllotted[manager] = SafeMath.add(LPTokenAllotted[manager], amount);
+    function stake(uint256 _amount, address _token, address _manager) override onlyLP(msg.sender) external {
+        LPTokenAllotted[_manager][_token] = SafeMath.add(LPTokenAllotted[_manager][_token], _amount);
     }
 
     /**
         Gets liquidity allotted for asset manager (message sender)
+        @param  _token  address of token allocated earlier to asset manager (message sender)
      */
-    function getAllotedStake() override external view returns(uint256){
-        return LPTokenAllotted[msg.sender];
-    }    
+    function getAllotedStake(address _token) override external view returns(uint256){
+        return LPTokenAllotted[msg.sender][_token];
+    }       
     
     /**
         Called by issuer of 'security' token to open an issue which will last till 'cutoffTime'
