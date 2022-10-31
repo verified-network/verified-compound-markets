@@ -184,8 +184,8 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
         require(products.checkProduct(owned)==true || role=='AM');
         if(role=="AM"){
             if(ERC20(owned).balanceOf(msg.sender)>=offered && LPTokenAllotted[msg.sender][owned]>=offered){                 
-                ERC20(owned).transferFrom(msg.sender, address(this), offered);
-                LPTokenAllotted[msg.sender][owned] = SafeMath.sub(LPTokenAllotted[msg.sender][owned], offered);
+                //ERC20(owned).transferFrom(msg.sender, address(this), offered);
+                //LPTokenAllotted[msg.sender][owned] = SafeMath.sub(LPTokenAllotted[msg.sender][owned], offered);
                 make(msg.sender, owned, isin, offered, tomatch, desired, min); 
             }
         }
@@ -295,64 +295,71 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
                                         mmtokens[security][cash][0].amountOffered) >=
                                         SafeMath.div(mmtokens[cash][security][k].amountOffered,
                                         mmtokens[cash][security][k].amountDesired))
-                                    {    
-                                        // store liquidity tokens    
-                                        if(pairedTokenIndex[security][cash]==0){
-                                            pairedTokens[security].push(cash);
-                                            pairedTokenIndex[security][cash] = pairedTokens[security].length;                                            
+                                    {   
+                                        if(ERC20(cash).balanceOf(mmtokens[cash][security][k].owner)>=mmtokens[cash][security][k].amountOffered){
+                                            //transfers cash tokens from asset manager and adjusts allocated stake
+                                            ERC20(cash).transferFrom(mmtokens[cash][security][k].owner, address(this), mmtokens[cash][security][k].amountOffered); 
+                                        
+                                            // store liquidity tokens    
+                                            if(pairedTokenIndex[security][cash]==0){
+                                                pairedTokens[security].push(cash);
+                                                pairedTokenIndex[security][cash] = pairedTokens[security].length;                                            
+                                            }
+                                            
+                                            if(mmtokens[security][cash][0].min < qlTokens[security][cash].minimumSecurity  || 
+                                                qlTokens[security][cash].minimumSecurity==0)
+                                                qlTokens[security][cash].minimumSecurity = mmtokens[security][cash][0].min;
+
+                                            if(mmtokens[cash][security][k].min < qlTokens[cash][security].minimumCash  || 
+                                                qlTokens[cash][security].minimumCash==0)
+                                                qlTokens[cash][security].minimumCash = mmtokens[cash][security][k].min;
+
+                                            if(mmtokens[security][cash][0].amountOffered > qlTokens[security][cash].desiredSecurity  || 
+                                                qlTokens[security][cash].desiredSecurity==0)
+                                                qlTokens[security][cash].desiredSecurity = mmtokens[security][cash][0].amountOffered;
+
+                                            if(mmtokens[cash][security][k].amountOffered > qlTokens[cash][security].desiredCash  || 
+                                                qlTokens[cash][security].desiredCash==0)
+                                                qlTokens[cash][security].desiredCash = mmtokens[cash][security][k].amountOffered;
+
+                                            // find and store min price ratio
+                                            if(SafeMath.div(mmtokens[security][cash][0].min,
+                                                mmtokens[security][cash][0].amountOffered) < 
+                                                qlTokens[security][cash].minRatio  || 
+                                                qlTokens[security][cash].minRatio==0)
+                                            {   
+                                                qlTokens[security][cash].minRatio = 
+                                                            SafeMath.div(mmtokens[security][cash][0].min,
+                                                            mmtokens[security][cash][0].amountOffered);
+                                            }
+                                            
+                                            // find and store max price ratio
+                                            if(SafeMath.div(mmtokens[cash][security][k].amountOffered,
+                                                mmtokens[cash][security][k].min) > 
+                                                qlTokens[security][cash].maxRatio || 
+                                                qlTokens[security][cash].maxRatio==0)
+                                            {   
+                                                qlTokens[security][cash].maxRatio = 
+                                                            SafeMath.div(mmtokens[cash][security][k].amountOffered,
+                                                            mmtokens[cash][security][k].min);                                        
+                                            }  
+                                            
+                                            // store qualified liquidity provider info
+                                            lp memory provider = lp({
+                                                owner : mmtokens[cash][security][k].owner,
+                                                tokenOffered : cash,
+                                                underwritten : mmtokens[cash][security][k].amountOffered,
+                                                subscribed : 0,
+                                                earned : 0
+                                            });
+                                            liquidityProviders[security].push(provider); 
+
+                                            //deduct amount underwritten from asset manager's allocated stake                                            
+                                            LPTokenAllotted[provider.owner][cash] = SafeMath.sub(LPTokenAllotted[provider.owner][cash], provider.underwritten);
+
+                                            totalUnderwritten[security] = 
+                                            SafeMath.add(totalUnderwritten[security], mmtokens[cash][security][k].amountOffered);
                                         }
-                                        
-                                        if(mmtokens[security][cash][0].min < qlTokens[security][cash].minimumSecurity  || 
-                                            qlTokens[security][cash].minimumSecurity==0)
-                                            qlTokens[security][cash].minimumSecurity = mmtokens[security][cash][0].min;
-
-                                        if(mmtokens[cash][security][k].min < qlTokens[cash][security].minimumCash  || 
-                                            qlTokens[cash][security].minimumCash==0)
-                                            qlTokens[cash][security].minimumCash = mmtokens[cash][security][k].min;
-
-                                        if(mmtokens[security][cash][0].amountOffered > qlTokens[security][cash].desiredSecurity  || 
-                                            qlTokens[security][cash].desiredSecurity==0)
-                                            qlTokens[security][cash].desiredSecurity = mmtokens[security][cash][0].amountOffered;
-
-                                        if(mmtokens[cash][security][k].amountOffered > qlTokens[cash][security].desiredCash  || 
-                                            qlTokens[cash][security].desiredCash==0)
-                                            qlTokens[cash][security].desiredCash = mmtokens[cash][security][k].amountOffered;
-
-                                        // find and store min price ratio
-                                        if(SafeMath.div(mmtokens[security][cash][0].min,
-                                            mmtokens[security][cash][0].amountOffered) < 
-                                            qlTokens[security][cash].minRatio  || 
-                                            qlTokens[security][cash].minRatio==0)
-                                        {   
-                                            qlTokens[security][cash].minRatio = 
-                                                        SafeMath.div(mmtokens[security][cash][0].min,
-                                                        mmtokens[security][cash][0].amountOffered);
-                                        }
-                                        
-                                        // find and store max price ratio
-                                        if(SafeMath.div(mmtokens[cash][security][k].amountOffered,
-                                            mmtokens[cash][security][k].min) > 
-                                            qlTokens[security][cash].maxRatio || 
-                                            qlTokens[security][cash].maxRatio==0)
-                                        {   
-                                            qlTokens[security][cash].maxRatio = 
-                                                        SafeMath.div(mmtokens[cash][security][k].amountOffered,
-                                                        mmtokens[cash][security][k].min);                                        
-                                        }  
-                                        
-                                        // store qualified liquidity provider info
-                                        lp memory provider = lp({
-                                            owner : mmtokens[cash][security][k].owner,
-                                            tokenOffered : cash,
-                                            underwritten : mmtokens[cash][security][k].amountOffered,
-                                            subscribed : 0,
-                                            earned : 0
-                                        });
-                                        liquidityProviders[security].push(provider);  
-
-                                        totalUnderwritten[security] = 
-                                        SafeMath.add(totalUnderwritten[security], mmtokens[cash][security][k].amountOffered);
-                                        
                                     }
                                 }
                             }
