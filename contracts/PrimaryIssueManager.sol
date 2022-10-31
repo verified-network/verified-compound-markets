@@ -183,9 +183,9 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
         (bytes32 role, ) = client.getRole(msg.sender);
         require(products.checkProduct(owned)==true || role=='AM');
         if(role=="AM"){
-            if(ERC20(owned).balanceOf(msg.sender)>=offered && LPTokenAllotted[msg.sender][owned]>=offered){                 
+            if(ERC20(owned).balanceOf(msg.sender)>=offered){                 
                 //ERC20(owned).transferFrom(msg.sender, address(this), offered);
-                //LPTokenAllotted[msg.sender][owned] = SafeMath.sub(LPTokenAllotted[msg.sender][owned], offered);
+                LPTokenAllotted[msg.sender][owned] = SafeMath.sub(LPTokenAllotted[msg.sender][owned], offered);
                 make(msg.sender, owned, isin, offered, tomatch, desired, min); 
             }
         }
@@ -355,11 +355,16 @@ contract PrimaryIssueManager is IMarketMaker, Ownable{
                                             liquidityProviders[security].push(provider); 
 
                                             //deduct amount underwritten from asset manager's allocated stake                                            
-                                            LPTokenAllotted[provider.owner][cash] = SafeMath.sub(LPTokenAllotted[provider.owner][cash], provider.underwritten);
+                                            //LPTokenAllotted[provider.owner][cash] = SafeMath.sub(LPTokenAllotted[provider.owner][cash], provider.underwritten);
 
                                             totalUnderwritten[security] = 
                                             SafeMath.add(totalUnderwritten[security], mmtokens[cash][security][k].amountOffered);
                                         }
+                                        else{
+                                            //adjust amount underwritten from asset manager's allocated stake                                            
+                                            LPTokenAllotted[mmtokens[cash][security][k].owner][cash] = 
+                                                SafeMath.add(LPTokenAllotted[mmtokens[cash][security][k].owner][cash], mmtokens[cash][security][k].amountOffered);
+                                        }                                        
                                     }
                                 }
                             }
