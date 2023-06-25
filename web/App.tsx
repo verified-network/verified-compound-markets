@@ -51,8 +51,6 @@ function useAsyncEffect(fn: () => Promise<void>, deps: any[] = []) {
   }, deps);
 }
 
-
-
 export function App<N extends Network>({rpc, web3, account, networkConfig}: AppPropsExt<N>) {
   let { cTokenNames } = networkConfig;
 
@@ -84,7 +82,7 @@ export function App<N extends Network>({rpc, web3, account, networkConfig}: AppP
     <div className="page home">
       <div className="container">
         <div className="masthead L1">
-          <h1 className="L0 heading heading--emphasized">My Comet Extension</h1>
+          <h1 className="L0 heading heading--emphasized">Verified Markets</h1>
           { accountState.extEnabled ?
             <button className="button button--large button--supply" onClick={disableExt}>
               <CircleCheckmark />
@@ -121,7 +119,8 @@ export function App<N extends Network>({rpc, web3, account, networkConfig}: AppP
                 </div>
                 <div className="panel__header-row">
                   <p className="text-color--1">
-                    Further information about your extension.
+                    Verified Markets allows asset managers of real world assets to stake them in exchange for liquidity, 
+                    and for users to borrow staked real world assets to earn income from underlying assets. 
                   </p>
                 </div>
               </div>

@@ -1,7 +1,9 @@
 
-# Comet Extension Template
+# Comet Extension for Verified Markets
 
-The Comet Extension Template is a template for developing a Compound III Operator and/or Extension. The operator is an Ethereum smart contract which interacts with the Compound III Protocol on behalf of a user who approves this extension. The web extension is a front-end integration into the Compound III interface. The operator code is built on [Foundry](https://book.getfoundry.sh/), and the web extension code is built on [React](https://reactjs.org/) using [Vite](https://vitejs.dev/).
+The Verified Markets extension enables real world asset owners and managers to stake collateral for liquidity from the Compound protocol. It also enables users to borrow real world asset collateral to benefit from income streams they generate.  
+
+The operator code is built on [Foundry](https://book.getfoundry.sh/), and the web extension code is built on [React](https://reactjs.org/) using [Vite](https://vitejs.dev/).
 
 ## Getting Started
 
