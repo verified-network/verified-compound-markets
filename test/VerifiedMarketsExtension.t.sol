@@ -4,22 +4,13 @@ pragma solidity ^0.8.13;
 import "forge-std/Script.sol";
 import "../src/VerifiedMarkets.sol";
 import "forge-std/Test.sol";
-import "../test/MainnetConstants.t.sol";
-import "forge-std/console2.sol";
+import "./MainnetConstants.t.sol";
 
-contract Playground is Script, Test, MainnetConstants {
-    address public constant caller = address(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
-
-    function setUp() public {}
-
-    function run() public {
-        vm.startBroadcast();
-
+contract VerifiedMarketsTest is MainnetConstants {
+    function testMyCometExtension() public {
         console.log("Deploying Verified Markets");
         VerifiedMarkets ext = deployVerifiedMarkets();
         console.log("Deployed Verified Markets", address(ext));
-
-        console.log("Proceed.");
     }
 
     function deployVerifiedMarkets() internal returns (VerifiedMarkets) {

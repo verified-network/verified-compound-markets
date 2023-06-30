@@ -82,7 +82,7 @@ export function App<N extends Network>({rpc, web3, account, networkConfig}: AppP
     <div className="page home">
       <div className="container">
         <div className="masthead L1">
-          <h1 className="L0 heading heading--emphasized">Verified Markets</h1>
+          <h1 className="L0 heading heading--emphasized">Verified RWA Markets</h1>
           { accountState.extEnabled ?
             <button className="button button--large button--supply" onClick={disableExt}>
               <CircleCheckmark />
@@ -119,8 +119,9 @@ export function App<N extends Network>({rpc, web3, account, networkConfig}: AppP
                 </div>
                 <div className="panel__header-row">
                   <p className="text-color--1">
-                    Verified Markets allows asset managers of real world assets to stake them in exchange for liquidity, 
-                    and for users to borrow staked real world assets to earn income from underlying assets. 
+                    Verified RWA Markets allows asset managers of real world assets to sell them for collateral that can 
+                    be used to borrow liquid digital assets, and for users to buy staked real world assets with collateral 
+                    supported on Compound and earn income from underlying real world assets. 
                   </p>
                 </div>
               </div>
