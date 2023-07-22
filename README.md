@@ -1,7 +1,7 @@
 
 # Comet Extension for Verified Markets
 
-The Verified Markets extension enables real world asset owners and managers to stake collateral for liquidity from the Compound protocol. It also enables users to borrow real world asset collateral to benefit from income streams they generate.  
+The Verified Markets extension enables real world asset (RWA) owners and managers to borrow liquidity from the Compound protocol. It also enables Compound users to stake collateral for RWAs on Compound and benefit from additional returns that RWAs generate. The [Verified Markets specification is here](https://github.com/verified-network/verified-compound-markets/tree/master/docs/Verified_Compound_Markets_v1.pdf).  
 
 The operator code is built on [Foundry](https://book.getfoundry.sh/), and the web extension code is built on [React](https://reactjs.org/) using [Vite](https://vitejs.dev/).
 
