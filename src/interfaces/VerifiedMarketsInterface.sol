@@ -22,14 +22,8 @@ interface RWA{
 
     function postCollateral(address asset, address collateral, uint256 amount) external;
 
-    function buyRWA(address asset, address bond, uint256 amount) external;
-
     function borrowBase(address base, uint256 amount) external;
 
     function repayBase(address base, uint256 amount) external;
-
-    function redeeemRWA(address asset, address bond, uint256 amount) external;
-
-    function sellRWA(address asset, address bond, uint256 amount) external;
 
 }

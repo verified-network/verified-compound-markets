@@ -74,6 +74,13 @@ To deploy the operator, first build it:
 yarn forge:build
 ```
 
+Then, export the environment variables:
+
+```
+export RPC_URL="https://goerli.infura.io/v3/<your infura key>"
+export ETHEREUM_PK="<your private key with 0x preceding it>"
+```
+
 Next, you can deploy it to goerli:
 
 ```sh
