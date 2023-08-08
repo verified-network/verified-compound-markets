@@ -3,6 +3,13 @@ pragma solidity 0.8.16;
 
 interface RWA{
 
+    struct Asset{
+        address bond;
+        uint256 apy;
+        string issuingDocs;
+        uint256 faceValue;
+    }
+
     function submitNewRWA(address asset, address bond, uint256 apy, string memory issuingDocs, uint256 faceValue) external;
 
     function voteOnRWA(address asset, bool ballot) external;
@@ -11,9 +18,9 @@ interface RWA{
 
     function buyRWA(address asset, address bond, uint256 amount) external;
 
-    function borrowBase() external;
+    function borrowBase(address base, uint256 amount) external;
 
-    function repayBase() external;
+    function repayBase(address base, uint256 amount) external;
 
     function redeeemRWA(address asset, address bond, uint256 amount) external;
 
