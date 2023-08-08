@@ -10,6 +10,12 @@ interface RWA{
         uint256 faceValue;
     }
 
+    struct Collateral{
+        address collateral;
+        uint256 collateralAmount;
+        uint256 borrowed;
+    }
+
     function submitNewRWA(address asset, address bond, uint256 apy, string memory issuingDocs, uint256 faceValue) external;
 
     function voteOnRWA(address asset, bool ballot) external;
