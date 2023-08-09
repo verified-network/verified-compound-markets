@@ -18,8 +18,6 @@ interface RWA{
 
     function submitNewRWA(address asset, address bond, uint256 apy, string memory issuingDocs, uint256 faceValue) external;
 
-    function voteOnRWA(address asset, bool ballot) external;
-
     function postCollateral(address asset, address collateral, uint256 amount) external;
 
     function borrowBase(address base, uint256 amount) external;

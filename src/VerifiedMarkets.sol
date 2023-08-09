@@ -40,18 +40,22 @@ contract VerifiedMarkets is RWA{
   function submitNewRWA(address asset, address bond, uint256 apy, string memory issuingDocs, uint256 faceValue) override external {
     require(asset!=address(0x0) && bond!=address(0x0) && apy>0 && faceValue>0, "RWA submission : Invalid request");
     require(Bond(bond).getIssuer()==msg.sender, "RWA submission : Invalid issuer");
-    RWA.Asset memory rwa = RWA.Asset({
-      bond: bond,
-      apy: apy,
-      issuingDocs: issuingDocs,
-      faceValue: faceValue
-    });
-    assets[msg.sender][asset] = rwa; 
+    if(assets[msg.sender][asset].bond!=address(0x0)){
+      RWA.Asset memory rwa = RWA.Asset({
+        bond: bond,
+        apy: apy,
+        issuingDocs: issuingDocs,
+        faceValue: faceValue
+      });
+      assets[msg.sender][asset] = rwa; 
+    }
+    else{
+      assets[msg.sender][asset].bond = bond;
+      assets[msg.sender][asset].apy = apy;
+      assets[msg.sender][asset].issuingDocs = issuingDocs;
+      assets[msg.sender][asset].faceValue = faceValue;
+    }
     emit NewRWA(msg.sender, asset, bond, apy, issuingDocs, faceValue);
-  }
-
-  function voteOnRWA(address asset, bool ballot) override external {
-    //to decide whether to implement or not
   }
 
   //posting collateral from RWA issuer to Compound
@@ -59,20 +63,25 @@ contract VerifiedMarkets is RWA{
     require(asset!=address(0x0) && collateral!=address(0x0) && amount>0, "Comet Collateral provisioning: Invalid");
     IERC20(asset).approve(msg.sender, amount);
     comet.supplyFrom(msg.sender, asset, collateral, amount);
-    RWA.Collateral memory guarantee = RWA.Collateral({
-      collateral: collateral,
-      collateralAmount: amount,
-      borrowed: 0 
-    });
-    guarantees[msg.sender][asset] = guarantee; 
+    if(guarantees[msg.sender][asset].collateral!=collateral){
+      RWA.Collateral memory guarantee = RWA.Collateral({
+        collateral: collateral,
+        collateralAmount: amount,
+        borrowed: 0 
+      });
+      guarantees[msg.sender][asset] = guarantee; 
+    }
+    else{
+      guarantees[msg.sender][asset].collateralAmount = guarantees[msg.sender][asset].collateralAmount + amount;
+    }
     emit PostedCollateral(msg.sender, asset, collateral, amount);
   }
 
   //borrows base asset from Compound supplied to borrower
   function borrowBase(address base, uint256 amount) override external {
-    require(base!=address(0x0) && amount>comet.baseBorrowMin(), "Borrowing base : Invalid");
+    require(base!=address(0x0) && amount>comet.baseBorrowMin() && comet.isBorrowCollateralized(msg.sender), "Borrowing base : Invalid");
     comet.withdrawTo(msg.sender, base, amount);
-    guarantees[msg.sender][base].borrowed = amount;
+    guarantees[msg.sender][base].borrowed = guarantees[msg.sender][base].borrowed + amount;
     emit Borrowed(msg.sender, base, amount);
   }
 
@@ -85,7 +94,6 @@ contract VerifiedMarkets is RWA{
     comet.withdrawTo(msg.sender, guarantees[msg.sender][base].collateral, collateralToWithdraw);
     emit Repaid(msg.sender, base, amount);
   }
-
 
 }
 
