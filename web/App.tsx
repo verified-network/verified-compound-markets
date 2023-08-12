@@ -9,6 +9,11 @@ import { Contract, ContractInterface } from '@ethersproject/contracts';
 import { Close } from './Icons/Close';
 import { CircleCheckmark } from './Icons/CircleCheckmark';
 
+
+import { BrowserRouter , Routes, Route } from 'react-router-dom';
+import Issuer from './issuer';
+import Providers from './provider';
+
 interface AppProps {
   rpc?: RPC,
   web3: JsonRpcProvider
@@ -79,6 +84,7 @@ export function App<N extends Network>({rpc, web3, account, networkConfig}: AppP
   }
 
   return (
+    <BrowserRouter>
     <div className="page home">
       <div className="container">
         <div className="masthead L1">
@@ -90,46 +96,18 @@ export function App<N extends Network>({rpc, web3, account, networkConfig}: AppP
             </button> :
             <button className="button button--large button--supply" onClick={enableExt}>Enable</button> }
         </div>
-        <div className="home__content">
-          <div className="home__assets">
-            <div className="panel panel--assets">
-              <div className="panel__header-row">
-                <label className="L1 label text-color--1">My Extension Dashboard</label>
-              </div>
-              <div className="panel__header-row">
-                <label className="label text-color--1">
-                  A dashboard to control how a user utilizes your extension.
-                </label>
-              </div>
-              { null }
-              <div className="panel__header-row">
-                <label className="L1 label text-color--2">Debug Information</label>
-                <label className="label text-color--2">
-                  network={ showNetwork(networkConfig.network) }<br/>
-                  account={ account }<br/>
-                </label>
-              </div>
-            </div>
-          </div>
-          <div className="home__sidebar">
-            <div className="position-card__summary">
-              <div className="panel position-card L3">
-                <div className="panel__header-row">
-                  <label className="L1 label text-color--1">Summary</label>
-                </div>
-                <div className="panel__header-row">
-                  <p className="text-color--1">
-                    Verified RWA Markets allows asset managers of real world assets to sell them for collateral that can 
-                    be used to borrow liquid digital assets, and for users to buy staked real world assets with collateral 
-                    supported on Compound and earn income from underlying real world assets. 
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        
       </div>
+      
+      <Routes>
+     
+      <Route path="/" element={<Providers />}> </Route>
+      <Route path ="/issue" element={ <Issuer/>}> </Route>
+
+      </Routes>
+      
     </div>
+    </BrowserRouter>
   );
 };
 
