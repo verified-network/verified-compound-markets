@@ -33,6 +33,6 @@ forge create \
   $etherscan_args \
   $wallet_args \
   $@ \
-  src/MyCometExtension.sol:MyCometExtension \
+  src/VerifiedMarkets.sol:VerifiedMarkets \
   --constructor-args \
     "$comet"
