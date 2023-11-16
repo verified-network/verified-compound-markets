@@ -1,13 +1,12 @@
-
 # Comet Extension for Verified Markets
 
-The Verified Markets extension enables real world asset (RWA) owners and managers to borrow liquidity from the Compound protocol. It also enables Compound users to stake collateral for RWAs on Compound and benefit from additional returns that RWAs generate. The [Verified Markets specification is here](https://github.com/verified-network/verified-compound-markets/tree/master/docs/Verified_Compound_Markets_v1.pdf).  
+The Verified Markets extension enables real world asset (RWA) owners and managers to borrow liquidity from the Compound protocol. It also enables Compound users to stake collateral for RWAs on Compound and benefit from additional returns that RWAs generate. The [Verified Markets specification is here](https://github.com/verified-network/verified-compound-markets/tree/master/docs/Verified_Compound_Markets_v1.pdf).
 
 The operator code is built on [Foundry](https://book.getfoundry.sh/), and the web extension code is built on [React](https://reactjs.org/) using [Vite](https://vitejs.dev/).
 
 ## Getting Started
 
-First, [install Foundry](https://book.getfoundry.sh/getting-started/installation) and NodeJS 18+ and [yarn](https://yarnpkg.com/). 
+First, [install Foundry](https://book.getfoundry.sh/getting-started/installation) and NodeJS 18+ and [yarn](https://yarnpkg.com/).
 
 You can build this Compound Extension's operator by running:
 
@@ -47,9 +46,9 @@ This should spawn a web server at an address such as http://localhost:5183. Visi
 
 A few notes:
 
- * Any changes to web source code should auto-reload.
- * If you want to change the smart contract code, you'll need to kill and restart `yarn forge:playground`.
- * The standalone development experience is not the primary usage of the extension. See [Webb3](https://github.com/compound-finance/webb3) for details on running as an embedded extension.
+- Any changes to web source code should auto-reload.
+- If you want to change the smart contract code, you'll need to kill and restart `yarn forge:playground`.
+- The standalone development experience is not the primary usage of the extension. See [Webb3](https://github.com/compound-finance/webb3) for details on running as an embedded extension.
 
 To run this in embedded mode (see Embedding below), you should run the following command in Webb3:
 
@@ -80,6 +79,8 @@ Then, export the environment variables:
 export RPC_URL="https://goerli.infura.io/v3/<your infura key>"
 export ETHEREUM_PK="<your private key with 0x preceding it>"
 ```
+
+forge verify-contract
 
 Next, you can deploy it to goerli:
 
