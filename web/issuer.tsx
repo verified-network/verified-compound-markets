@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Signer, ethers } from 'ethers';
 import TableData from './issuer_data';
 import '../styles/main.scss';
@@ -7,8 +7,8 @@ import Modal from './Modal';
 import { Link } from 'react-router-dom';
 import AssetIssuanceForm from './issue_form';
 import VerifierdMarkets from '../out/VerifiedMarkets.sol/VerifiedMarkets.json';
+import VerifiedContractAddress from "@verified-network/verified-sdk/dist/contractAddress";
 
-const verifiedMarketsAddress = '0x90Cc254C549fEfD8b7a0C2514d93b487d9d234f3';
 
 interface TableRow {
   "Asset": string;
@@ -22,7 +22,6 @@ interface TableRow {
 }
 
 
-
 const Issuer: React.FC = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [popupAction, setPopupAction] = useState('');
@@ -32,6 +31,7 @@ const Issuer: React.FC = () => {
   const [asset, setAsset] = useState<string>('');
   const [collateral, setCollateral] = useState<string>('');
   const [borrowAmount, setBorrowAmount] = useState<number>(0);
+
 
   const data: TableRow[] = TableData;
 
@@ -45,6 +45,7 @@ const Issuer: React.FC = () => {
     'APY',
     'Status',
   ];
+
 
   const ThData = () => {
     return headerNames.map((headerName) => {
@@ -64,15 +65,14 @@ const Issuer: React.FC = () => {
     });
   };
 
-
   const handleButtonClick = (action: string) => {
     if (action === 'Issue new RWA') {
       // Handle Issue new RWA action
       setShowIssuanceForm(true);
     } else {
-      // Set the asset, collateral, and borrowAmount 
-      setAsset('0xc3d688B66703497DAA19211EEdff47f25384cdc3'); //Asset address
-      setCollateral('0xA17581A9E3356d9A858b789D68B4d866e593aE94'); //Collateral Address
+      //Set the asset, collateral, and borrowAmount
+      setAsset(''); //Asset address
+      setCollateral(''); //Collateral Address
 
       setBorrowAmount(enteredNumber !== null ? enteredNumber : 0);
 
@@ -96,16 +96,28 @@ const Issuer: React.FC = () => {
       await (window.ethereum as any).request({ method: 'eth_requestAccounts' });
       console.log('After eth_requestAccounts');
 
-      // Provider and signer from MetaMask
       const provider = new ethers.providers.Web3Provider(window.ethereum);
+
+      // Get the network information
+      const network = await provider.getNetwork();
+      const networkId = network.chainId.toString();
+
+      // Fetch contract addresses dynamically
+      const contractAddress = await VerifiedContractAddress[networkId];
+
+      if (!contractAddress) {
+        console.error(`Contract addresses not found for network ID: ${networkId}`);
+        return;
+      }
+
       const signer = provider.getSigner();
 
       //Contract instance
-      const verifiedMarketsContract = new ethers.Contract(verifiedMarketsAddress, VerifierdMarkets.abi, signer);
+      const verifiedMarketsContract = new ethers.Contract(contractAddress, VerifierdMarkets.abi, signer);
 
       //Call the PostCollateral Function
-      await verifiedMarketsContract.postCollateral(asset, collateral, borrowAmount, { gasLimit: 300000, gasPrice: ethers.utils.parseUnits('50', 'gwei') });
-
+      const postCollateral = await verifiedMarketsContract.postCollateral(asset, collateral, borrowAmount, { gasLimit: 300000, gasPrice: ethers.utils.parseUnits('50', 'gwei') });
+      await postCollateral.wait();
 
       console.log(`Collateral posted for asset ${asset} with collateral ${collateral} and amount ${borrowAmount}`);
     } catch (error) {
@@ -129,15 +141,27 @@ const Issuer: React.FC = () => {
       await (window.ethereum as any).request({ method: 'eth_requestAccounts' });
       console.log('After eth_requestAccounts');
 
-      // Create a provider and signer from MetaMask
       const provider = new ethers.providers.Web3Provider(window.ethereum);
+
+      // Get the network information
+      const network = await provider.getNetwork();
+      const networkId = network.chainId.toString();
+
+      // Fetch contract addresses dynamically
+      const contractAddress = await VerifiedContractAddress[networkId];
+
+      if (!contractAddress) {
+        console.error(`Contract addresses not found for network ID: ${networkId}`);
+        return;
+      }
       const signer = provider.getSigner();
 
       //Contract instance
-      const verifiedMarketsContract = new ethers.Contract(verifiedMarketsAddress, VerifierdMarkets.abi, signer);
+      const verifiedMarketsContract = new ethers.Contract(contractAddress, VerifierdMarkets.abi, signer);
 
       // Call the BorrowBase Function
       await verifiedMarketsContract.borrowBase(asset, borrowAmount, { gasLimit: 300000 });
+
       console.log(`Borrowed ${borrowAmount} from Compound using asset ${asset}`);
     } catch (error) {
       console.error('Error borrowing from Compound:', error);
@@ -158,18 +182,29 @@ const Issuer: React.FC = () => {
       await (window.ethereum as any).request({ method: 'eth_requestAccounts' });
       console.log('After eth_requestAccounts');
 
-      //  Provider and signer from MetaMask
       const provider = new ethers.providers.Web3Provider(window.ethereum);
+
+      // Get the network information
+      const network = await provider.getNetwork();
+      const networkId = network.chainId.toString();
+
+      // Fetch contract addresses dynamically
+      const contractAddress = await VerifiedContractAddress[networkId];
+
+      if (!contractAddress) {
+        console.error(`Contract addresses not found for network ID: ${networkId}`);
+        return;
+      }
       const signer = provider.getSigner();
 
-
       //Contract instance
-      const verifiedMarketsContract = new ethers.Contract(verifiedMarketsAddress, VerifierdMarkets.abi, signer);
+      const verifiedMarketsContract = new ethers.Contract(contractAddress, VerifierdMarkets.abi, signer);
 
       //Call the repayBase function
       await verifiedMarketsContract.repayBase(asset, borrowAmount, { gasLimit: 300000 });
 
       console.log(`Repay loan for asset ${asset} with amount ${borrowAmount}`);
+
     } catch (error) {
       console.error('Error repaying loan:', error);
     }

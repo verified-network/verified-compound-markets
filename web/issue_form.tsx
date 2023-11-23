@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import './issue_form.css';
 import { ethers } from 'ethers';
+import Bond from '@verified-network/verified-sdk/dist/abi/payments/Bond.json'
 import VerifierdMarkets from '../out/VerifiedMarkets.sol/VerifiedMarkets.json';
-
-const verifiedMarketsAddress = '0x90Cc254C549fEfD8b7a0C2514d93b487d9d234f3';
+import VerifiedContractAddress from "@verified-network/verified-sdk/dist/contractAddress"
 
 const CurrencyOptions = ['USD', 'EUR', 'GBP']; // Add more currency options as needed
 
@@ -14,6 +14,8 @@ const AssetIssuanceForm: React.FC = () => {
   const [apyOffered, setApyOffered] = useState<number | ''>('');
   const [selectedCurrency, setSelectedCurrency] = useState('');
   const [issuingDocument, setIssuingDocument] = useState<File | null>(null);
+  const [verifiedContractAddress, setVerifiedContractAddress] = useState<string | null>(null);
+
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -32,46 +34,70 @@ const AssetIssuanceForm: React.FC = () => {
         // Request accounts using ethereum.request
         await (window.ethereum as any).request({ method: 'eth_requestAccounts' });
 
-        // Provider and signer from MetaMask
         const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
+        const network = await provider.getNetwork();
+        const networkId = network.chainId;
 
-        // Create a contract instance
-        const verifiedMarketsContract = new ethers.Contract(verifiedMarketsAddress, VerifierdMarkets.abi, signer);
+        // Use the function to fetch contract addresses dynamically
+        const ContractAddresses = await VerifiedContractAddress;
+        const networkContractAddresses = ContractAddresses[networkId];
+        const bondContractAddress = networkContractAddresses?.Bond;
 
-        // Convert APY and face value to wei
-        const _apy = ethers.utils.parseUnits((apyOffered / 100).toString(), 'ether');
-        const _faceValue = ethers.utils.parseUnits((faceValue / 100).toString(), 'ether');
+        setVerifiedContractAddress(bondContractAddress || null);
 
-        console.log('Calling submitNewRWA function...');
+        if (verifiedContractAddress !== null) {
+          const signer = provider.getSigner();
 
-        // Call the submitNewRWA function
-        const transaction = await verifiedMarketsContract.submitNewRWA(assetAddress, collateralAddress, _apy, issuingDocument, { gasLimit: 300000 });
+          // Bond contract instance
+          const bondContract = new ethers.Contract(bondContractAddress, Bond.abi, signer);
 
-        // '/doc/Verified_Compound_Markets_v1.pdf', // Replace with actual issuingDocs_faceValue,
+          // Issue the bond by calling the requestIssue function
+          const issueTransaction = await bondContract.requestIssue(
+            ethers.utils.parseUnits(faceValue.toString(), 'ether'),
+            signer.getAddress(),
+            ethers.utils.formatBytes32String(selectedCurrency),
+            collateralAddress,
+            { gasLimit: 300000 }
+          );
 
-        console.log('Transaction hash:', transaction.hash);
+          console.log('Bond Issued. Transaction hash:', issueTransaction.hash);
+          await issueTransaction.wait();
 
-        // Wait for transaction confirmation
-        await transaction.wait();
+          // VerifiedMarkets contract instance
+          const verifiedMarketsContract = new ethers.Contract(verifiedContractAddress, VerifierdMarkets.abi, signer);
 
-        // Reset the form after successful submission
-        setAssetAddress('');
-        setCollateralAddress('');
-        setFaceValue('');
-        setApyOffered('');
-        setSelectedCurrency('');
-        setIssuingDocument(null);
+          // Convert APY and face value to wei
+          const _apy = ethers.utils.parseUnits((apyOffered / 100).toString(), 'ether');
+          const _faceValue = ethers.utils.parseUnits((faceValue / 100).toString(), 'ether');
 
-        console.log('Form submitted successfully');
-      } else {
-        throw new Error('MetaMask not detected');
+          console.log('Calling submitNewRWA function...');
+
+          // Call the submitNewRWA function
+          const transaction = await verifiedMarketsContract.submitNewRWA(
+            assetAddress, collateralAddress, _apy, issuingDocument, _faceValue, { gasLimit: 300000 }
+          );
+
+          console.log('Transaction hash:', transaction.hash);
+
+          // Wait for transaction confirmation
+          await transaction.wait();
+
+          // Reset the form after successful submission
+          setAssetAddress('');
+          setCollateralAddress('');
+          setFaceValue('');
+          setApyOffered('');
+          setSelectedCurrency('');
+          setIssuingDocument(null);
+
+          console.log('Form submitted successfully');
+        } else {
+          throw new Error('MetaMask not detected');
+        }
       }
     } catch (error) {
       console.error('Error submitting form:', error);
     }
-
-
 
   };
 
