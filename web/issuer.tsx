@@ -73,6 +73,9 @@ const Issuer: React.FC = () => {
       //Set the asset, collateral, and borrowAmount
       setAsset(''); //Asset address
       setCollateral(''); //Collateral Address
+      console.log('Asset:', asset);
+      console.log('Collateral:', collateral);
+
 
       setBorrowAmount(enteredNumber !== null ? enteredNumber : 0);
 
@@ -105,7 +108,9 @@ const Issuer: React.FC = () => {
       // Fetch contract addresses dynamically
       const contractAddress = await VerifiedContractAddress[networkId];
 
-      if (!contractAddress) {
+
+
+      if (!contractAddress || !contractAddress.Client) {
         console.error(`Contract addresses not found for network ID: ${networkId}`);
         return;
       }
@@ -113,10 +118,12 @@ const Issuer: React.FC = () => {
       const signer = provider.getSigner();
 
       //Contract instance
-      const verifiedMarketsContract = new ethers.Contract(contractAddress, VerifierdMarkets.abi, signer);
+      const verifiedMarketsContract = new ethers.Contract(contractAddress.Client, VerifierdMarkets.abi, signer);
+      console.log('Verified Markets Contract Address:', contractAddress);
+
 
       //Call the PostCollateral Function
-      const postCollateral = await verifiedMarketsContract.postCollateral(asset, collateral, borrowAmount, { gasLimit: 300000, gasPrice: ethers.utils.parseUnits('50', 'gwei') });
+      const postCollateral = await verifiedMarketsContract.postCollateral(asset, collateral, borrowAmount, { gasLimit: 300000 });
       await postCollateral.wait();
 
       console.log(`Collateral posted for asset ${asset} with collateral ${collateral} and amount ${borrowAmount}`);
@@ -150,14 +157,15 @@ const Issuer: React.FC = () => {
       // Fetch contract addresses dynamically
       const contractAddress = await VerifiedContractAddress[networkId];
 
-      if (!contractAddress) {
+      if (!contractAddress || !contractAddress.Compound) {
         console.error(`Contract addresses not found for network ID: ${networkId}`);
         return;
       }
       const signer = provider.getSigner();
 
       //Contract instance
-      const verifiedMarketsContract = new ethers.Contract(contractAddress, VerifierdMarkets.abi, signer);
+      const verifiedMarketsContract = new ethers.Contract(contractAddress.Compound, VerifierdMarkets.abi, signer);
+
 
       // Call the BorrowBase Function
       await verifiedMarketsContract.borrowBase(asset, borrowAmount, { gasLimit: 300000 });
@@ -191,14 +199,14 @@ const Issuer: React.FC = () => {
       // Fetch contract addresses dynamically
       const contractAddress = await VerifiedContractAddress[networkId];
 
-      if (!contractAddress) {
+      if (!contractAddress || !contractAddress.Compound) {
         console.error(`Contract addresses not found for network ID: ${networkId}`);
         return;
       }
       const signer = provider.getSigner();
 
       //Contract instance
-      const verifiedMarketsContract = new ethers.Contract(contractAddress, VerifierdMarkets.abi, signer);
+      const verifiedMarketsContract = new ethers.Contract(contractAddress.Compound, VerifierdMarkets.abi, signer);
 
       //Call the repayBase function
       await verifiedMarketsContract.repayBase(asset, borrowAmount, { gasLimit: 300000 });
