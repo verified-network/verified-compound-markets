@@ -3,11 +3,12 @@ import './issue_form.css';
 import { ethers } from 'ethers';
 import Bond from '@verified-network/verified-sdk/dist/abi/payments/Bond.json'
 import VerifierdMarkets from '../out/VerifiedMarkets.sol/VerifiedMarkets.json';
-import VerifiedContractAddress from "@verified-network/verified-sdk/dist/contractAddress"
+import VerifiedContractAddress from '@verified-network/verified-sdk/dist/contractAddress'
+
 
 const CurrencyOptions = ['USD', 'EUR', 'GBP']; // Add more currency options as needed
 
-const AssetIssuanceForm: React.FC = () => {
+const AssetIssuanceForm: React.FC = function () {
   const [assetAddress, setAssetAddress] = useState('');
   const [collateralAddress, setCollateralAddress] = useState('');
   const [faceValue, setFaceValue] = useState<number | ''>('');
@@ -34,14 +35,22 @@ const AssetIssuanceForm: React.FC = () => {
         // Request accounts using ethereum.request
         await (window.ethereum as any).request({ method: 'eth_requestAccounts' });
 
+
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         const network = await provider.getNetwork();
         const networkId = network.chainId;
+
+
 
         // Use the function to fetch contract addresses dynamically
         const ContractAddresses = await VerifiedContractAddress;
         const networkContractAddresses = ContractAddresses[networkId];
         const bondContractAddress = networkContractAddresses?.Bond;
+
+        if (!bondContractAddress) {
+          console.error(`Bond contract address not found for network ID: ${networkId}`);
+          return;
+        }
 
         setVerifiedContractAddress(bondContractAddress || null);
 
@@ -49,7 +58,7 @@ const AssetIssuanceForm: React.FC = () => {
           const signer = provider.getSigner();
 
           // Bond contract instance
-          const bondContract = new ethers.Contract(bondContractAddress, Bond.abi, signer);
+          const bondContract = new ethers.Contract(bondContractAddress, (Bond as any).abi, signer);
 
           // Issue the bond by calling the requestIssue function
           const issueTransaction = await bondContract.requestIssue(
@@ -60,6 +69,14 @@ const AssetIssuanceForm: React.FC = () => {
             { gasLimit: 300000 }
           );
 
+          const code = await provider.getCode(bondContractAddress);
+
+          if (code === "0x") {
+            console.error("No code found at the specified address. Double-check the contract address.");
+          } else {
+            console.log("Contract code found at the specified address.");
+            // Proceed with interacting with the contract
+          }
           console.log('Bond Issued. Transaction hash:', issueTransaction.hash);
           await issueTransaction.wait();
 
@@ -71,6 +88,7 @@ const AssetIssuanceForm: React.FC = () => {
           const _faceValue = ethers.utils.parseUnits((faceValue / 100).toString(), 'ether');
 
           console.log('Calling submitNewRWA function...');
+
 
           // Call the submitNewRWA function
           const transaction = await verifiedMarketsContract.submitNewRWA(
@@ -96,7 +114,7 @@ const AssetIssuanceForm: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('Error submitting form:', error);
+      console.error('Error submitting transaction:', error);
     }
 
   };
@@ -181,3 +199,5 @@ const AssetIssuanceForm: React.FC = () => {
 };
 
 export default AssetIssuanceForm;
+
+

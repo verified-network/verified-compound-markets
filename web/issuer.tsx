@@ -7,7 +7,7 @@ import Modal from './Modal';
 import { Link } from 'react-router-dom';
 import AssetIssuanceForm from './issue_form';
 import VerifierdMarkets from '../out/VerifiedMarkets.sol/VerifiedMarkets.json';
-import VerifiedContractAddress from "@verified-network/verified-sdk/dist/contractAddress";
+import VerifiedContractAddress from '@verified-network/verified-sdk/dist/contractAddress';
 
 
 interface TableRow {
@@ -177,7 +177,7 @@ const Issuer: React.FC = () => {
   };
 
   // Calling Repayloan function
-  const repayLoan = async () => {
+  const repayBase = async () => {
     try {
       // Connect to MetaMask
       if (!window.ethereum) {
@@ -236,7 +236,7 @@ const Issuer: React.FC = () => {
         await postCollateral();
         await borrowBase();
       } else if (popupAction === 'Repay Loan') {
-        await repayLoan()
+        await repayBase()
         console.error('Invalid action:', popupAction);
       }
     } catch (error) {
