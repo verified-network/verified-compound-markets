@@ -57,7 +57,6 @@
     "vendoza": "0.0.4",
     "vite": "^3.0.7"
   },
-  "packageManager": "yarn@3.2.0",
   "volta": {
     "node": "18.8.0"
   }
