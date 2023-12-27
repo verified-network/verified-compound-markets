@@ -1,88 +1,93 @@
 /* form.css */
 .main {
-    text-align: center;
-    background-color: black;
-    width: 75%;
-    height: 55%;
-    
-    justify-content: center;
-    margin-left: 13%;
-    padding-top: 1%;
-    
-    margin-top: 5%;
-    color: #ffffff;
-   
-    margin-top: 20px;
-  }
-  
-  .main2 {
-    display: inline-block;
-    text-align: left;
-    border: 1px solid #ccc;
-    padding: 15px;
-    border-radius: 5px;
-    box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
-    background-color: black;
-    height: 85%;
-    padding-bottom: 1%;
-    color: #fff;
-    
-  }
-  
-  form {
-    display: grid;
-    gap: 10px;
-    margin-top: 10px;
-    
-    
-  }
-  
-  .form-field {
-    display: flex;
-    align-items: center;
-    
-  }
-  
-  label {
-    font-weight: bold;
-    color: black; /* Black font color */
-    width: 200px;
-    font-size: 13px;
-    color: #ffffff;
-  }
-  
-  input,
-  select {
-    flex: 1;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 13px;
-    color: black; /* Black font color */
-  }
-  
-  textarea {
-    flex: 1;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 12px;
-    color: black; /* Black font color */
-  }
-  
-  button {
-    padding: 10px 20px;
-    background-color: #007bff;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    font-size: 16px;
-    cursor: pointer;
-    width: 100px;
-    margin: 0 auto;
-  }
-  
-  button:hover {
-    background-color: #0056b3;
-  }
-  
+	text-align: center;
+	background-color: black;
+	width: 75%;
+	height: 55%;
+
+	justify-content: center;
+	margin-left: 13%;
+	padding-top: 1%;
+
+	margin-top: 5%;
+	color: #ffffff;
+
+	margin-top: 20px;
+}
+
+.main2 {
+	display: inline-block;
+	text-align: left;
+	border: 1px solid #ccc;
+	padding: 15px;
+	border-radius: 5px;
+	box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
+	background-color: black;
+	height: 85%;
+	padding-bottom: 1%;
+	color: #fff;
+
+}
+
+form {
+	display: grid;
+	gap: 10px;
+	margin-top: 10px;
+
+
+}
+
+.form-field {
+	display: flex;
+	align-items: center;
+
+}
+
+label {
+	font-weight: bold;
+	color: black;
+	/* Black font color */
+	width: 200px;
+	font-size: 13px;
+	color: #ffffff;
+}
+
+input,
+select {
+	flex: 1;
+	padding: 10px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	font-size: 13px;
+	color: black;
+	/* Black font color */
+}
+
+textarea {
+	flex: 1;
+	padding: 10px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	font-size: 12px;
+	color: black;
+	/* Black font color */
+}
+
+button {
+	padding: 10px 20px;
+	background-color: #073E2E;
+	border: none;
+	border-radius: 4px;
+	font-size: 16px;
+	cursor: pointer;
+	width: 100px;
+	margin: 0 auto;
+}
+
+button:hover {
+	background-color: #062e23;
+}
+
+.button--back {
+	color: #00c289;
+}

@@ -16,6 +16,8 @@
   "dependencies": {
     "@apollo/client": "^3.8.7",
     "@compound-finance/comet-extension": "^0.0.5",
+    "@emotion/react": "^11.11.3",
+    "@emotion/styled": "^11.11.0",
     "@esbuild-plugins/node-globals-polyfill": "^0.1.1",
     "@ethersproject/abi": "^5.6.2",
     "@ethersproject/bignumber": "^5.4.2",
