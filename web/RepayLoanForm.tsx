@@ -1,59 +1,31 @@
 import React, { useState } from 'react';
-import './issue_form.css';
 import { ethers } from 'ethers';
+import Bond from '@verified-network/verified-sdk/dist/abi/payments/Bond.json'
 import VerifierdMarkets from '@verified-network/verified-sdk/dist/abi/loans/compound/VerifiedMarkets.json';
 import VerifiedContractAddress from '@verified-network/verified-sdk/dist/contractAddress'
-import { VerifiedWallet, Bond, Compound, Provider } from '@verified-network/verified-sdk';
-import axios from 'axios';
 import ERC20 from '../abis/ERC20';
+import './issue_form.css';
 
 
 const CurrencyOptions = ['USD', 'EUR', 'GBP', 'INR']; // Add more currency options as needed
-const pinataApiKey = import.meta.env.VITE_APP_PINANA_API_KEY;
-const pinataSecretKey = import.meta.env.VITE_APP_PINANA_API_SECRET;
 
-const AssetIssuanceForm: React.FC = function () {
+const RepayLoanForm: React.FC = function () {
   const [assetAddress, setAssetAddress] = useState('');
   const [collateralAddress, setCollateralAddress] = useState('');
   const [faceValue, setFaceValue] = useState<number | ''>('');
   const [apyOffered, setApyOffered] = useState<number | ''>('');
   const [selectedCurrency, setSelectedCurrency] = useState('');
-  const [issuingDocumentIPFSURL, setIssuingDocumentIPFSURL] = useState(``)
-  const [issuingDocument, setIssuingDocument] = useState<File | null>(null);
+  const [verifiedContractAddress, setVerifiedContractAddress] = useState<string | null>(null);
 
-  const handleChangeFile = async (e) => {
-    const file = e.target.files[0];
-    setIssuingDocument(file);
-  }
-
-  const uploadingFileToIPFS = async (data: File) => {
-    const formData = new FormData()
-    formData.append('file', data)
-    try {
-      const resFile = await axios({
-        method: "post",
-        url: "https://api.pinata.cloud/pinning/pinFileToIPFS",
-        data: formData,
-        headers: {
-          'pinata_api_key': `${pinataApiKey}`,
-          'pinata_secret_api_key': `${pinataSecretKey}`,
-          "Content-Type": "multipart/form-data"
-        },
-      });
-      setIssuingDocumentIPFSURL(`https://ipfs.io/ipfs/${resFile.data.IpfsHash}`);
-    } catch (error) {
-      console.log(error)
-    }
-  }
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     // Handle form submission here
-    if (!assetAddress || !collateralAddress || !faceValue || !apyOffered || !selectedCurrency || !issuingDocument) {
+
+    if (!assetAddress || !collateralAddress || !faceValue || !apyOffered || !selectedCurrency) {
       return;
     }
-    await uploadingFileToIPFS(issuingDocument);
 
     try {
       // Connect to MetaMask
@@ -63,82 +35,98 @@ const AssetIssuanceForm: React.FC = function () {
         // Request accounts using ethereum.request
         await (window.ethereum as any).request({ method: 'eth_requestAccounts' });
 
+
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         const network = await provider.getNetwork();
         const networkId = network.chainId;
 
+
+
+        // Use the function to fetch contract addresses dynamically
         const ContractAddresses = await VerifiedContractAddress;
         const networkContractAddresses = ContractAddresses[networkId];
         const selectedCurrencyContractKey = selectedCurrency === 'USD' ? 'VBUSD' :
           selectedCurrency === 'EUR' ? 'VBEUR' :
-            selectedCurrency === 'INR' ? 'VBINR' : 'VCCHF';
+          selectedCurrency === 'INR' ? 'VBINR' : 'VCCHF';
 
         const bondContractAddress = networkContractAddresses?.BOND?.[selectedCurrencyContractKey];
+
         if (!bondContractAddress) {
           console.error(`Bond contract address not found for network ID: ${networkId}`);
           return;
         }
 
-        const verifiedContractAddress = networkContractAddresses?.Compound;
-        if (verifiedContractAddress) {
-          const signer = provider.getSigner();
-          const bondContract = new Bond(signer, bondContractAddress);
+        setVerifiedContractAddress(bondContractAddress || null);
 
+        if (verifiedContractAddress !== null) {
+          const signer = provider.getSigner();
+
+          // Bond contract instance
+          const bondContract = new ethers.Contract(bondContractAddress, (Bond as any).abi, signer);
           const signerAddress = await signer.getAddress();
 
+          // ERC-20 token contract instance for the selected currency
           const collateralTokenContract = new ethers.Contract(collateralAddress, ERC20, signer);
           const collateralTokenDecimals = await collateralTokenContract.decimals();
           const collateralTokenSymbol = await collateralTokenContract.symbol();
+          // Approve the Bond contract to spend tokens on behalf of the owner
+          const approvalTransaction = await collateralTokenContract.approve(bondContractAddress, ethers.constants.MaxUint256);
           
-          const approvalTransaction = await collateralTokenContract.approve(bondContractAddress, ethers.utils.parseUnits(faceValue.toString(), collateralTokenDecimals));
+          console.log('Approval transaction hash:', approvalTransaction.hash);
           await approvalTransaction.wait();
-          console.log('Tokens approved successfully.');
 
+          console.log('Tokens approved successfully.');
+          
+          console.log(ethers.utils.parseUnits(faceValue.toString(), collateralTokenDecimals),
+          signerAddress,
+          collateralTokenSymbol,
+          collateralAddress)
+          // Issue the bond by calling the requestIssue function
           const issueTransaction = await bondContract.requestIssue(
             ethers.utils.parseUnits(faceValue.toString(), collateralTokenDecimals),
             signerAddress,
             collateralTokenSymbol,
-            collateralAddress
+            collateralAddress,
+            { gasLimit: 300000 }
           );
 
-          console.log('issueTransaction', issueTransaction);
+          const code = await provider.getCode(bondContractAddress);
 
-          // const result = await fetch(`https://api.thegraph.com/subgraphs/name/verified-network/payments`, {
-          //   method: 'POST',
-          //   headers: { 'Content-Type': 'application/json' },
-          //   body: JSON.stringify({
-          //     query: `{
-          //       users(where: {bondIssues_: {id_gt: "0"}}) {
-          //         accountid
-          //         bondIssues(orderBy: issueTime, orderDirection: desc) {
-          //           bondName
-          //           id
-          //           issueTime
-          //           issuedAmount
-          //           collateralAmount
-          //         }
-          //         id
-          //       }
-          //     }`
-          //   }),
-          // }).then((res) => res.json());
-          // console.log(result);
-          // return;
+          if (code === "0x") {
+            console.error("No code found at the specified address. Double-check the contract address.");
+          } else {
+            console.log("Contract code found at the specified address.");
+            // Proceed with interacting with the contract
+          }
+          console.log('Bond Issued. Transaction hash:', issueTransaction.hash);
+          await issueTransaction.wait();
 
-          // const _apy = ethers.utils.parseUnits((apyOffered / 100).toString(), collateralTokenDecimals);
-          // const _faceValue = ethers.utils.parseUnits((faceValue / 100).toString(), collateralTokenDecimals);
+          // VerifiedMarkets contract instance
+          const verifiedMarketsContract = new ethers.Contract(verifiedContractAddress, VerifierdMarkets.abi, signer);
 
-          // console.log('Calling submitNewRWA function...', assetAddress, collateralAddress, _apy, issuingDocumentIPFSURL, _faceValue);
-          // const verifiedMarketsContract = new Compound(signer, verifiedContractAddress);
-          // const submitNewRWATransaction = await verifiedMarketsContract.submitNewRWA(assetAddress, collateralAddress, _apy, issuingDocumentIPFSURL, _faceValue, { gasLimit: 300000 })
+          // Convert APY and face value to wei
+          const _apy = ethers.utils.parseUnits((apyOffered / 100).toString(), collateralTokenDecimals);
+          const _faceValue = ethers.utils.parseUnits((faceValue / 100).toString(), collateralTokenDecimals);
+
+          console.log('Calling submitNewRWA function...');
+
+
+          // Call the submitNewRWA function
+          // const transaction = await verifiedMarketsContract.submitNewRWA(
+          //   assetAddress, collateralAddress, _apy, _faceValue, { gasLimit: 300000 }
+          // );
+
+          // console.log('Transaction hash:', transaction.hash);
+
+          // // Wait for transaction confirmation
+          // await transaction.wait();
 
           // Reset the form after successful submission
-          // setAssetAddress('');
-          // setCollateralAddress('');
-          // setFaceValue('');
-          // setApyOffered('');
-          // setSelectedCurrency('');
-          // setIssuingDocument(null);
+          setAssetAddress('');
+          setCollateralAddress('');
+          setFaceValue('');
+          setApyOffered('');
+          setSelectedCurrency('');
 
           console.log('Form submitted successfully');
         } else {
@@ -153,7 +141,7 @@ const AssetIssuanceForm: React.FC = function () {
 
   return (
     <div className='main'>
-      <h4>Asset Issuance Form</h4>
+      <h4>Repay Loan Form</h4>
       <div className='main2'>
         <form onSubmit={handleSubmit}>
           <div className='form-field'>
@@ -214,15 +202,6 @@ const AssetIssuanceForm: React.FC = function () {
             </select>
           </div>
 
-          <div className='form-field'>
-            <label>Issuing Document</label>
-            <input
-              type='file'
-              onChange={handleChangeFile}
-              required
-            />
-          </div>
-
           <button className='button button--large button--supply' type='submit'>Submit</button>
         </form>
       </div>
@@ -230,6 +209,4 @@ const AssetIssuanceForm: React.FC = function () {
   );
 };
 
-export default AssetIssuanceForm;
-
-
+export default RepayLoanForm;

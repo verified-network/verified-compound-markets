@@ -6,9 +6,11 @@ import '../styles/components/_button.scss';
 import Modal from './Modal';
 import { Link } from 'react-router-dom';
 import AssetIssuanceForm from './issue_form';
-import VerifierdMarkets from '../out/VerifiedMarkets.sol/VerifiedMarkets.json';
+import BorrowForm from './BorrowForm';
+import RepayLoanForm from './RepayLoanForm';
+import RedeemCollateralForm from './RedeemCollateralForm';
+import VerifierdMarkets from '@verified-network/verified-sdk/dist/abi/loans/compound/VerifiedMarkets.json';
 import VerifiedContractAddress from '@verified-network/verified-sdk/dist/contractAddress';
-
 
 interface TableRow {
   "Asset": string;
@@ -26,8 +28,10 @@ const Issuer: React.FC = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [popupAction, setPopupAction] = useState('');
   const [enteredNumber, setEnteredNumber] = useState<number | null>(null);
-  const [showModal, setShowModal] = useState(false);
   const [showIssuanceForm, setShowIssuanceForm] = useState(false);
+  const [showBorrowForm, setShowBorrowForm] = useState(false);
+  const [showRedeemCollateralForm, setShowRedeemCollateralForm] = useState(false);
+  const [showRepayLoanForm, setShowRepayLoanForm] = useState(false);
   const [asset, setAsset] = useState<string>('');
   const [collateral, setCollateral] = useState<string>('');
   const [borrowAmount, setBorrowAmount] = useState<number>(0);
@@ -66,23 +70,21 @@ const Issuer: React.FC = () => {
   };
 
   const handleButtonClick = (action: string) => {
-    if (action === 'Issue new RWA') {
-      // Handle Issue new RWA action
-      setShowIssuanceForm(true);
-    } else {
-      //Set the asset, collateral, and borrowAmount
-      setAsset(''); //Asset address
-      setCollateral(''); //Collateral Address
-      console.log('Asset:', asset);
-      console.log('Collateral:', collateral);
-
-
-      setBorrowAmount(enteredNumber !== null ? enteredNumber : 0);
-
-      setShowPopup(true);
+    if (action === 'Issue new RWA') setShowIssuanceForm(true);
+    if (action === 'Borrow') setShowBorrowForm(true)
+    if (action === 'Redeem Collateral') setShowRedeemCollateralForm(true)
+    if (action === 'Repay Loan') setShowRepayLoanForm(true)
+    // else {
+    //   //Set the asset, collateral, and borrowAmount
+    //   setAsset(''); //Asset address
+    //   setCollateral(''); //Collateral Address
+    //   console.log('Asset:', asset);
+    //   console.log('Collateral:', collateral);
+    //   setBorrowAmount(enteredNumber !== null ? enteredNumber : 0);
+    //   setShowPopup(true);
+    //   setPopupAction(action);
+    // }
       setPopupAction(action);
-    }
-
   };
 
   // Calling PostCollateral function
@@ -107,8 +109,6 @@ const Issuer: React.FC = () => {
 
       // Fetch contract addresses dynamically
       const contractAddress = await VerifiedContractAddress[networkId];
-
-
 
       if (!contractAddress || !contractAddress.Client) {
         console.error(`Contract addresses not found for network ID: ${networkId}`);
@@ -224,14 +224,9 @@ const Issuer: React.FC = () => {
       // Handle the enteredNumber based on the popupAction (e.g., perform appropriate action)
       console.log(`Action: ${popupAction}, Number: ${enteredNumber}`);
 
-      // Reset states after submission
-      setShowPopup(false);
-      setPopupAction('');
-      setEnteredNumber(null);
-
       // Call the appropriate functions based on popupAction
-      if (popupAction === 'Post Collateral') {
-        await postCollateral();
+      if (popupAction === 'Redeem Collateral') {
+        
       } else if (popupAction === 'Borrow') {
         await postCollateral();
         await borrowBase();
@@ -241,18 +236,13 @@ const Issuer: React.FC = () => {
       }
     } catch (error) {
       console.error('Error handling popup submit:', error);
+    } finally {
+      // Reset states after submission
+      setShowPopup(false);
+      setPopupAction('');
+      setEnteredNumber(null);
     }
   };
-
-  const openModal = () => {
-    setShowModal(true);
-  };
-
-  const closeModal = () => {
-    setShowModal(false);
-  };
-
-
 
   return (
 
@@ -313,7 +303,7 @@ const Issuer: React.FC = () => {
 
               <button
                 className="sidebar-button button--large button--supply"
-                onClick={openModal}
+                onClick={() => handleButtonClick('Issue new RWA')}
               >
                 Issue new RWA
               </button>
@@ -323,7 +313,7 @@ const Issuer: React.FC = () => {
         </div>
       </div>
 
-      {showPopup && (
+      {/* {!showPopup && (
         <div className="popup">
           <h3>Enter a number:</h3>
           <input
@@ -340,11 +330,20 @@ const Issuer: React.FC = () => {
             </button>
           </div>
         </div>
-      )}
-      {showIssuanceForm && <AssetIssuanceForm />}
-      {showModal && <Modal onClose={closeModal} />}
+      )} */}
+      {showBorrowForm && <Modal onClose={() => setShowBorrowForm(false)}>
+          <BorrowForm />
+      </Modal>}
+      {showIssuanceForm && <Modal onClose={() => setShowIssuanceForm(false)}>
+          <AssetIssuanceForm />
+      </Modal>}
+      {showRedeemCollateralForm && <Modal onClose={() => setShowRedeemCollateralForm(false)}>
+          <RedeemCollateralForm />
+      </Modal>}
+      {showRepayLoanForm && <Modal onClose={() => setShowRepayLoanForm(false)}>
+          <RepayLoanForm />
+      </Modal>}
     </div>
-
   )
 }
 export default Issuer;
