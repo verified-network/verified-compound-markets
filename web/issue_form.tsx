@@ -26,6 +26,7 @@ const AssetIssuanceForm: React.FC = function () {
 	const [issuingDocumentIPFSURL, setIssuingDocumentIPFSURL] = useState(``)
 	const [issuingDocument, setIssuingDocument] = useState<File | null>(null);
 	const [activeStep, setActiveStep] = React.useState(0);
+	const [RWAList, setRWAList] = React.useState([]);
 
 	const handleBack = () => {
 		setActiveStep((prevActiveStep) => prevActiveStep - 1);
@@ -103,21 +104,20 @@ const AssetIssuanceForm: React.FC = function () {
 					const collateralTokenSymbol = await collateralTokenContract.symbol();
 
 					if(activeStep === 0) {
-						// const approvalTransaction = await collateralTokenContract.approve(bondContractAddress, ethers.utils.parseUnits(faceValue.toString(), collateralTokenDecimals));
-						// await approvalTransaction.wait();
-						// console.log('Tokens approved successfully.');
+						const approvalTransaction = await collateralTokenContract.approve(bondContractAddress, ethers.utils.parseUnits(faceValue.toString(), collateralTokenDecimals));
+						await approvalTransaction.wait();
+						console.log('Tokens approved successfully.');
 	
-						// const issueTransaction = await bondContract.requestIssue(
-						// 	ethers.utils.parseUnits(faceValue.toString(), collateralTokenDecimals),
-						// 	signerAddress,
-						// 	collateralTokenSymbol,
-						// 	collateralAddress
-						// );
+						const issueTransaction = await bondContract.requestIssue(
+							ethers.utils.parseUnits(faceValue.toString(), collateralTokenDecimals),
+							signerAddress,
+							collateralTokenSymbol,
+							collateralAddress
+						);
 	
 						// console.log('issueTransaction', issueTransaction);
 						console.log('Form submitted successfully');
-					}
-					if(activeStep === 1) {
+
 						const result = await fetch(`https://api.thegraph.com/subgraphs/name/verified-network/payments`, {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
@@ -137,23 +137,26 @@ const AssetIssuanceForm: React.FC = function () {
 							}`
 						}),
 						}).then((res) => res.json());
-						console.log(result);
+						setRWAList(result?.data?.users[0]?.bondIssues);
+						console.log(result?.data?.users[0].bondIssues);
+					}
+					if(activeStep === 1) {
 
-						// const _apy = ethers.utils.parseUnits((apyOffered / 100).toString(), collateralTokenDecimals);
-						// const _faceValue = ethers.utils.parseUnits((faceValue / 100).toString(), collateralTokenDecimals);
+						const _apy = ethers.utils.parseUnits((apyOffered / 100).toString(), collateralTokenDecimals);
+						const _faceValue = ethers.utils.parseUnits((faceValue / 100).toString(), collateralTokenDecimals);
 
-						// console.log('Calling submitNewRWA function...', assetAddress, collateralAddress, _apy, issuingDocumentIPFSURL, _faceValue);
-						// const verifiedMarketsContract = new Compound(signer, verifiedContractAddress);
-						// const submitNewRWATransaction = await verifiedMarketsContract.submitNewRWA(assetAddress, collateralAddress, _apy, issuingDocumentIPFSURL, _faceValue, { gasLimit: 300000 })
+						console.log('Calling submitNewRWA function...', assetAddress, collateralAddress, _apy, issuingDocumentIPFSURL, _faceValue);
+						const verifiedMarketsContract = new Compound(signer, verifiedContractAddress);
+						const submitNewRWATransaction = await verifiedMarketsContract.submitNewRWA(assetAddress, collateralAddress, _apy, issuingDocumentIPFSURL, _faceValue, { gasLimit: 300000 })
 					}
 					setActiveStep((prevActiveStep) => prevActiveStep + 1);
 					// Reset the form after successful submission
-					// setAssetAddress('');
-					// setCollateralAddress('');
-					// setFaceValue('');
-					// setApyOffered('');
-					// setSelectedCurrency('');
-					// setIssuingDocument(null);
+					setAssetAddress('');
+					setCollateralAddress('');
+					setFaceValue('');
+					setApyOffered('');
+					setSelectedCurrency('');
+					setIssuingDocument(null);
 				} else {
 					throw new Error('MetaMask not detected');
 				}
@@ -266,7 +269,9 @@ const AssetIssuanceForm: React.FC = function () {
 									</form>
 								</div>
 							)}
-							{activeStep === 1 && (<h2>Listing RWA</h2>)}
+							{activeStep === 1 && RWAList.map((rwa: any, index:number) => {
+								return <h1 key={index}>{ethers.utils.parseBytes32String(rwa?.bondName)}</h1>;
+							})}
 						</Typography>
 						<Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
 							<button

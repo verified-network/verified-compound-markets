@@ -3,7 +3,8 @@ declare module '@verified-network/verified-sdk/dist/contractAddress' {
         [key: string]: {
             Bond: string;
             Client: string;
-            Compound: string
+            Compound: string;
+			Token: string;
             BOND: {
                 VBEUR: string;
                 VBINR: string;

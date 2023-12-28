@@ -1,15 +1,32 @@
 import React, { useState } from 'react';
 import { ethers } from 'ethers';
 import VerifiedContractAddress from '@verified-network/verified-sdk/dist/contractAddress'
-import { Bond } from '@verified-network/verified-sdk';
+import { Bond, Token } from '@verified-network/verified-sdk';
 import ERC20 from '../abis/ERC20';
 import './issue_form.css';
 
-
-const CurrencyOptions = ['USD', 'EUR', 'GBP', 'INR']; // Add more currency options as needed
+interface CollateralAddressesInterface {
+	[key: string]: {
+        LINK: string;
+        COMP: string;
+        ETH: string;
+        UNI: string;
+        WBTC: string;
+    };
+}
+const CollateralOptions = ['LINK', 'COMP', 'ETH', 'UNI', 'WBTC']
+const CollateralAddresses: CollateralAddressesInterface = {
+	'5': {
+		LINK: '0x326C977E6efc84E512bB9C30f76E30c160eD06FB',
+		COMP: '0x20572e4c090f15667cf7378e16fad2ea0e2f3eff',
+		ETH: '0xdD69DB25F6D620A7baD3023c5d32761D353D3De9',
+		UNI: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984',
+		WBTC: '0xC04B0d3107736C32e19F1c62b2aF67BE61d63a05',
+	}
+}; // Add more currency options as needed
 
 const ProvideCollateralForm: React.FC = function () {
-  const [collateralAddress, setCollateralAddress] = useState('');
+  const [collateralToken, setCollateralToken] = useState<string>('');
   const [faceValue, setFaceValue] = useState<number | ''>('');
   const [selectedCurrency, setSelectedCurrency] = useState('');
   const [verifiedContractAddress, setVerifiedContractAddress] = useState<string | null>(null);
@@ -20,7 +37,7 @@ const ProvideCollateralForm: React.FC = function () {
 
     // Handle form submission here
 
-    if (!collateralAddress || !faceValue || !selectedCurrency) {
+    if (!collateralToken || !faceValue || !selectedCurrency) {
       return;
     }
 
@@ -39,58 +56,37 @@ const ProvideCollateralForm: React.FC = function () {
         // Use the function to fetch contract addresses dynamically
         const ContractAddresses = await VerifiedContractAddress;
         const networkContractAddresses = ContractAddresses[networkId];
-        const selectedCurrencyContractKey = selectedCurrency === 'USD' ? 'VBUSD' :
-          selectedCurrency === 'EUR' ? 'VBEUR' :
-          selectedCurrency === 'INR' ? 'VBINR' : 'VCCHF';
+        const tokenContractAddress = networkContractAddresses?.Token;
+		const collateralTokenAddress = (CollateralAddresses[networkId] as any)?.[collateralToken];
 
-        const bondContractAddress = networkContractAddresses?.BOND?.[selectedCurrencyContractKey];
-
-        if (!bondContractAddress) {
+		if (!tokenContractAddress) {
           console.error(`Bond contract address not found for network ID: ${networkId}`);
           return;
         }
 
-        setVerifiedContractAddress(bondContractAddress || null);
+        setVerifiedContractAddress(tokenContractAddress || null);
 
         if (verifiedContractAddress !== null) {
           const signer = provider.getSigner();
 
           // Bond contract instance
-		  const bondContract = new Bond(signer, bondContractAddress);
+		  const tokenContract = new Token(signer, tokenContractAddress);
           const signerAddress = await signer.getAddress();
 
           // ERC-20 token contract instance for the selected currency
-          const collateralTokenContract = new ethers.Contract(collateralAddress, ERC20, signer);
+          const collateralTokenContract = new ethers.Contract(collateralTokenAddress, ERC20, signer);
           const collateralTokenDecimals = await collateralTokenContract.decimals();
           const collateralTokenSymbol = await collateralTokenContract.symbol();
-          // Approve the Bond contract to spend tokens on behalf of the owner
-          const approvalTransaction = await collateralTokenContract.approve(bondContractAddress, ethers.constants.MaxUint256);
-          
-          console.log('Approval transaction hash:', approvalTransaction.hash);
-          await approvalTransaction.wait();
-          console.log('Tokens approved successfully.');
-          
-          const requestTransaction = await bondContract.requestTransaction(
+          const requestTransaction = await tokenContract.contract.requestTransaction(
             ethers.utils.parseUnits(faceValue.toString(), collateralTokenDecimals),
             signerAddress,
-            collateralTokenSymbol,
-            collateralAddress,
+            ethers.utils.formatBytes32String(collateralTokenSymbol),
+            collateralTokenAddress,
             { gasLimit: 300000 }
           );
 
-          const code = await provider.getCode(bondContractAddress);
-
-          if (code === "0x") {
-            console.error("No code found at the specified address. Double-check the contract address.");
-          } else {
-            console.log("Contract code found at the specified address.");
-            // Proceed with interacting with the contract
-          }
-
-          await requestTransaction.wait();
-
-          // Reset the form after successful submission
-          setCollateralAddress('');
+		  // Reset the form after successful submission
+          setCollateralToken('');
           setFaceValue('');
           setSelectedCurrency('');
 
@@ -121,26 +117,16 @@ const ProvideCollateralForm: React.FC = function () {
           </div>
 
           <div className='form-field'>
-            <label>Collateral Address</label>
-            <input
-              type='text'
-              value={collateralAddress}
-              onChange={(e) => setCollateralAddress(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className='form-field'>
-            <label>APY Offered for Currency</label>
+            <label>Collateral Token</label>
             <select
-              value={selectedCurrency}
-              onChange={(e) => setSelectedCurrency(e.target.value)}
+              value={collateralToken}
+              onChange={(e) => setCollateralToken(e.target.value)}
               required
             >
               <option value='' disabled>
-                Select Currency
+			  	Collateral Token
               </option>
-              {CurrencyOptions.map((currency) => (
+              {CollateralOptions.map((currency) => (
                 <option key={currency} value={currency}>
                   {currency}
                 </option>
