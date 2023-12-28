@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './issue_form.css';
+import './form.css';
 import { ethers } from 'ethers';
 import VerifierdMarkets from '@verified-network/verified-sdk/dist/abi/loans/compound/VerifiedMarkets.json';
 import VerifiedContractAddress from '@verified-network/verified-sdk/dist/contractAddress'
@@ -103,26 +103,26 @@ const AssetIssuanceForm: React.FC = function () {
 					const collateralTokenDecimals = await collateralTokenContract.decimals();
 					const collateralTokenSymbol = await collateralTokenContract.symbol();
 
-					if(activeStep === 0) {
+					if (activeStep === 0) {
 						const approvalTransaction = await collateralTokenContract.approve(bondContractAddress, ethers.utils.parseUnits(faceValue.toString(), collateralTokenDecimals));
 						await approvalTransaction.wait();
 						console.log('Tokens approved successfully.');
-	
+
 						const issueTransaction = await bondContract.requestIssue(
 							ethers.utils.parseUnits(faceValue.toString(), collateralTokenDecimals),
 							signerAddress,
 							collateralTokenSymbol,
 							collateralAddress
 						);
-	
+
 						// console.log('issueTransaction', issueTransaction);
 						console.log('Form submitted successfully');
 
 						const result = await fetch(`https://api.thegraph.com/subgraphs/name/verified-network/payments`, {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({
-							query: `{
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								query: `{
 							users(where: {bondIssues_: {id_gt: "0"}}) {
 								accountid
 								bondIssues(orderBy: issueTime, orderDirection: desc) {
@@ -135,12 +135,12 @@ const AssetIssuanceForm: React.FC = function () {
 								id
 							}
 							}`
-						}),
+							}),
 						}).then((res) => res.json());
 						setRWAList(result?.data?.users[0]?.bondIssues);
 						console.log(result?.data?.users[0].bondIssues);
 					}
-					if(activeStep === 1) {
+					if (activeStep === 1) {
 
 						const _apy = ethers.utils.parseUnits((apyOffered / 100).toString(), collateralTokenDecimals);
 						const _faceValue = ethers.utils.parseUnits((faceValue / 100).toString(), collateralTokenDecimals);
@@ -151,12 +151,12 @@ const AssetIssuanceForm: React.FC = function () {
 					}
 					setActiveStep((prevActiveStep) => prevActiveStep + 1);
 					// Reset the form after successful submission
-					setAssetAddress('');
-					setCollateralAddress('');
-					setFaceValue('');
-					setApyOffered('');
-					setSelectedCurrency('');
-					setIssuingDocument(null);
+					// setAssetAddress('');
+					// setCollateralAddress('');
+					// setFaceValue('');
+					// setApyOffered('');
+					// setSelectedCurrency('');
+					// setIssuingDocument(null);
 				} else {
 					throw new Error('MetaMask not detected');
 				}
@@ -269,11 +269,11 @@ const AssetIssuanceForm: React.FC = function () {
 									</form>
 								</div>
 							)}
-							{activeStep === 1 && RWAList.map((rwa: any, index:number) => {
+							{activeStep === 1 && RWAList.map((rwa: any, index: number) => {
 								return <h1 key={index}>{ethers.utils.parseBytes32String(rwa?.bondName)}</h1>;
 							})}
 						</Typography>
-						<Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
+						<Box sx={{ display: 'flex', flexDirection: 'row' }}>
 							<button
 								disabled={activeStep === 0}
 								className='button--back'

@@ -2,145 +2,95 @@ import React, { useState } from 'react';
 import { ethers } from 'ethers';
 import VerifiedContractAddress from '@verified-network/verified-sdk/dist/contractAddress'
 import { Compound } from '@verified-network/verified-sdk';
-import './issue_form.css';
+import ERC20 from '../abis/ERC20';
+import './form.css';
 
 const CurrencyOptions = ['USD', 'EUR', 'GBP', 'INR']; // Add more currency options as needed
 
 const RepayLoanForm: React.FC = function () {
-  const [assetAddress, setAssetAddress] = useState('');
-  const [collateralAddress, setCollateralAddress] = useState('');
-  const [faceValue, setFaceValue] = useState<number | ''>('');
-  const [apyOffered, setApyOffered] = useState<number | ''>('');
-  const [selectedCurrency, setSelectedCurrency] = useState('');
-  const [asset, setAsset] = useState<string>('');
-  const [borrowAmount, setBorrowAmount] = useState<number>(0);
+	const [baseAddress, setBaseAddress] = useState('');
+	const [faceValue, setFaceValue] = useState<number | ''>('');
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+	const handleSubmit = async (event: React.FormEvent) => {
+		event.preventDefault();
 
-    // Handle form submission here
+		// Handle form submission here
+		if (!baseAddress || !faceValue) {
+			return;
+		}
+		try {
+			// Connect to MetaMask
+			if (!window.ethereum) {
+				console.error('MetaMask not detected');
+				return;
+			}
+			console.log('Before eth_requestAccounts');
 
-    if (!assetAddress || !collateralAddress || !faceValue || !apyOffered || !selectedCurrency) {
-      return;
-    }
+			// Request accounts using ethereum.request
+			await (window.ethereum as any).request({ method: 'eth_requestAccounts' });
+			console.log('After eth_requestAccounts');
 
-    try {
-		await repayBase();
-    } catch (error) {
-      console.error('Error submitting transaction:', error);
-    }
-  };
+			const provider = new ethers.providers.Web3Provider(window.ethereum);
 
-  // Calling Repayloan function
-  const repayBase = async () => {
-    try {
-      // Connect to MetaMask
-      if (!window.ethereum) {
-        console.error('MetaMask not detected');
-        return;
-      }
-      console.log('Before eth_requestAccounts');
+			// Get the network information
+			const network = await provider.getNetwork();
+			const networkId = network.chainId.toString();
 
-      // Request accounts using ethereum.request
-      await (window.ethereum as any).request({ method: 'eth_requestAccounts' });
-      console.log('After eth_requestAccounts');
+			// Fetch contract addresses dynamically
+			const contractAddress = await VerifiedContractAddress[networkId];
 
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
+			if (!contractAddress || !contractAddress.Compound) {
+				console.error(`Contract addresses not found for network ID: ${networkId}`);
+				return;
+			}
+			const signer = provider.getSigner();
 
-      // Get the network information
-      const network = await provider.getNetwork();
-      const networkId = network.chainId.toString();
+			const tokenContract = new ethers.Contract(baseAddress, ERC20, signer);
+			const tokenDecimals = await tokenContract.decimals();
 
-      // Fetch contract addresses dynamically
-      const contractAddress = await VerifiedContractAddress[networkId];
+			//Contract instance
+			const verifiedMarketsContract = new Compound(signer, contractAddress.Compound);
 
-      if (!contractAddress || !contractAddress.Compound) {
-        console.error(`Contract addresses not found for network ID: ${networkId}`);
-        return;
-      }
-      const signer = provider.getSigner();
+			//Call the repayBase function
+			await verifiedMarketsContract.repayBase(baseAddress, ethers.utils.parseUnits(faceValue.toString(), tokenDecimals), { gasLimit: 300000 });
 
-      //Contract instance
-	  const verifiedMarketsContract = new Compound(signer, contractAddress.Compound);
+			console.log(`Repay loan for asset ${baseAddress} with amount ${faceValue}`);
 
-      //Call the repayBase function
-      await verifiedMarketsContract.repayBase(asset, borrowAmount, { gasLimit: 300000 });
+		} catch (error) {
+			console.error('Error repaying loan:', error);
+		}
+	};
 
-      console.log(`Repay loan for asset ${asset} with amount ${borrowAmount}`);
+	return (
+		<div className='main'>
+			<h4>Repay Loan Form</h4>
+			<form onSubmit={handleSubmit}>
+				<div className='main2'>
+					<div className='form-field'>
+						<label>Base Address</label>
+						<input
+							type='text'
+							value={baseAddress}
+							onChange={(e) => setBaseAddress(e.target.value)}
+							required
+						/>
+					</div>
 
-    } catch (error) {
-      console.error('Error repaying loan:', error);
-    }
-  };
+					<div className='form-field'>
+						<label>Amount</label>
+						<input
+							type='number'
+							value={faceValue}
+							onChange={(e) => setFaceValue(e.target.valueAsNumber)}
+							required
+						/>
+					</div>
 
-  return (
-    <div className='main'>
-      <h4>Repay Loan Form</h4>
-      <div className='main2'>
-        <form onSubmit={handleSubmit}>
-          <div className='form-field'>
-            <label>Asset Address</label>
-            <input
-              type='text'
-              value={assetAddress}
-              onChange={(e) => setAssetAddress(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className='form-field'>
-            <label>Collateral Address</label>
-            <input
-              type='text'
-              value={collateralAddress}
-              onChange={(e) => setCollateralAddress(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className='form-field'>
-            <label>Face Value of Asset to Issue</label>
-            <input
-              type='number'
-              value={faceValue}
-              onChange={(e) => setFaceValue(e.target.valueAsNumber)}
-              required
-            />
-          </div>
-
-          <div className='form-field'>
-            <label>APY Offered</label>
-            <input
-              type='number'
-              value={apyOffered}
-              onChange={(e) => setApyOffered(e.target.valueAsNumber)}
-              required
-            />
-          </div>
-
-          <div className='form-field'>
-            <label>APY Offered for Currency</label>
-            <select
-              value={selectedCurrency}
-              onChange={(e) => setSelectedCurrency(e.target.value)}
-              required
-            >
-              <option value='' disabled>
-                Select Currency
-              </option>
-              {CurrencyOptions.map((currency) => (
-                <option key={currency} value={currency}>
-                  {currency}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button className='button button--large button--supply' type='submit'>Submit</button>
-        </form>
-      </div>
-    </div>
-  );
+				</div>
+				<button className='button button--large button--supply' type='submit'>Submit</button>
+			</form>
+		</div>
+	);
 };
 
 export default RepayLoanForm;
