@@ -1,16 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Signer, ethers } from 'ethers';
+import React, { useState } from 'react';
 import TableData from './issuer_data';
 import '../styles/main.scss';
 import '../styles/components/_button.scss';
 import Modal from './Modal';
-import { Link } from 'react-router-dom';
 import AssetIssuanceForm from './issue_form';
 import BorrowForm from './BorrowForm';
 import RepayLoanForm from './RepayLoanForm';
 import RedeemCollateralForm from './RedeemCollateralForm';
-import VerifierdMarkets from '@verified-network/verified-sdk/dist/abi/loans/compound/VerifiedMarkets.json';
-import VerifiedContractAddress from '@verified-network/verified-sdk/dist/contractAddress';
 
 interface TableRow {
   "Asset": string;
@@ -32,10 +28,6 @@ const Issuer: React.FC = () => {
   const [showBorrowForm, setShowBorrowForm] = useState(false);
   const [showRedeemCollateralForm, setShowRedeemCollateralForm] = useState(false);
   const [showRepayLoanForm, setShowRepayLoanForm] = useState(false);
-  const [asset, setAsset] = useState<string>('');
-  const [collateral, setCollateral] = useState<string>('');
-  const [borrowAmount, setBorrowAmount] = useState<number>(0);
-
 
   const data: TableRow[] = TableData;
 
@@ -87,137 +79,6 @@ const Issuer: React.FC = () => {
       setPopupAction(action);
   };
 
-  // Calling PostCollateral function
-  const postCollateral = async () => {
-    try {
-      // Connect to MetaMask
-      if (!window.ethereum) {
-        console.error('MetaMask not detected');
-        return;
-      }
-      console.log('Before eth_requestAccounts');
-
-      // Request accounts using ethereum.request
-      await (window.ethereum as any).request({ method: 'eth_requestAccounts' });
-      console.log('After eth_requestAccounts');
-
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-
-      // Get the network information
-      const network = await provider.getNetwork();
-      const networkId = network.chainId.toString();
-
-      // Fetch contract addresses dynamically
-      const contractAddress = await VerifiedContractAddress[networkId];
-
-      if (!contractAddress || !contractAddress.Client) {
-        console.error(`Contract addresses not found for network ID: ${networkId}`);
-        return;
-      }
-
-      const signer = provider.getSigner();
-
-      //Contract instance
-      const verifiedMarketsContract = new ethers.Contract(contractAddress.Client, VerifierdMarkets.abi, signer);
-      console.log('Verified Markets Contract Address:', contractAddress);
-
-
-      //Call the PostCollateral Function
-      const postCollateral = await verifiedMarketsContract.postCollateral(asset, collateral, borrowAmount, { gasLimit: 300000 });
-      await postCollateral.wait();
-
-      console.log(`Collateral posted for asset ${asset} with collateral ${collateral} and amount ${borrowAmount}`);
-    } catch (error) {
-      console.error('Error posting collateral:', error);
-    }
-  }
-
-
-
-  // Calling BorrowBase function
-  const borrowBase = async () => {
-    try {
-      // Connect to MetaMask
-      if (!window.ethereum) {
-        console.error('MetaMask not detected');
-        return;
-      }
-      console.log('Before eth_requestAccounts');
-
-      // Request accounts using ethereum.request
-      await (window.ethereum as any).request({ method: 'eth_requestAccounts' });
-      console.log('After eth_requestAccounts');
-
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-
-      // Get the network information
-      const network = await provider.getNetwork();
-      const networkId = network.chainId.toString();
-
-      // Fetch contract addresses dynamically
-      const contractAddress = await VerifiedContractAddress[networkId];
-
-      if (!contractAddress || !contractAddress.Compound) {
-        console.error(`Contract addresses not found for network ID: ${networkId}`);
-        return;
-      }
-      const signer = provider.getSigner();
-
-      //Contract instance
-      const verifiedMarketsContract = new ethers.Contract(contractAddress.Compound, VerifierdMarkets.abi, signer);
-
-
-      // Call the BorrowBase Function
-      await verifiedMarketsContract.borrowBase(asset, borrowAmount, { gasLimit: 300000 });
-
-      console.log(`Borrowed ${borrowAmount} from Compound using asset ${asset}`);
-    } catch (error) {
-      console.error('Error borrowing from Compound:', error);
-    }
-  };
-
-  // Calling Repayloan function
-  const repayBase = async () => {
-    try {
-      // Connect to MetaMask
-      if (!window.ethereum) {
-        console.error('MetaMask not detected');
-        return;
-      }
-      console.log('Before eth_requestAccounts');
-
-      // Request accounts using ethereum.request
-      await (window.ethereum as any).request({ method: 'eth_requestAccounts' });
-      console.log('After eth_requestAccounts');
-
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-
-      // Get the network information
-      const network = await provider.getNetwork();
-      const networkId = network.chainId.toString();
-
-      // Fetch contract addresses dynamically
-      const contractAddress = await VerifiedContractAddress[networkId];
-
-      if (!contractAddress || !contractAddress.Compound) {
-        console.error(`Contract addresses not found for network ID: ${networkId}`);
-        return;
-      }
-      const signer = provider.getSigner();
-
-      //Contract instance
-      const verifiedMarketsContract = new ethers.Contract(contractAddress.Compound, VerifierdMarkets.abi, signer);
-
-      //Call the repayBase function
-      await verifiedMarketsContract.repayBase(asset, borrowAmount, { gasLimit: 300000 });
-
-      console.log(`Repay loan for asset ${asset} with amount ${borrowAmount}`);
-
-    } catch (error) {
-      console.error('Error repaying loan:', error);
-    }
-  };
-
 
   const handlePopupSubmit = async () => {
     try {
@@ -228,11 +89,10 @@ const Issuer: React.FC = () => {
       if (popupAction === 'Redeem Collateral') {
         
       } else if (popupAction === 'Borrow') {
-        await postCollateral();
-        await borrowBase();
+
       } else if (popupAction === 'Repay Loan') {
-        await repayBase()
-        console.error('Invalid action:', popupAction);
+
+		console.error('Invalid action:', popupAction);
       }
     } catch (error) {
       console.error('Error handling popup submit:', error);

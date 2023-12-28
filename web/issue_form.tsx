@@ -10,7 +10,6 @@ import Box from '@mui/material/Box';
 import Stepper from '@mui/material/Stepper';
 import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
-import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 
 const CurrencyOptions = ['USD', 'EUR', 'GBP', 'INR']; // Add more currency options as needed
@@ -103,48 +102,51 @@ const AssetIssuanceForm: React.FC = function () {
 					const collateralTokenDecimals = await collateralTokenContract.decimals();
 					const collateralTokenSymbol = await collateralTokenContract.symbol();
 
-					const approvalTransaction = await collateralTokenContract.approve(bondContractAddress, ethers.utils.parseUnits(faceValue.toString(), collateralTokenDecimals));
-					await approvalTransaction.wait();
-					console.log('Tokens approved successfully.');
+					if(activeStep === 0) {
+						// const approvalTransaction = await collateralTokenContract.approve(bondContractAddress, ethers.utils.parseUnits(faceValue.toString(), collateralTokenDecimals));
+						// await approvalTransaction.wait();
+						// console.log('Tokens approved successfully.');
+	
+						// const issueTransaction = await bondContract.requestIssue(
+						// 	ethers.utils.parseUnits(faceValue.toString(), collateralTokenDecimals),
+						// 	signerAddress,
+						// 	collateralTokenSymbol,
+						// 	collateralAddress
+						// );
+	
+						// console.log('issueTransaction', issueTransaction);
+						console.log('Form submitted successfully');
+					}
+					if(activeStep === 1) {
+						const result = await fetch(`https://api.thegraph.com/subgraphs/name/verified-network/payments`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							query: `{
+							users(where: {bondIssues_: {id_gt: "0"}}) {
+								accountid
+								bondIssues(orderBy: issueTime, orderDirection: desc) {
+								bondName
+								id
+								issueTime
+								issuedAmount
+								collateralAmount
+								}
+								id
+							}
+							}`
+						}),
+						}).then((res) => res.json());
+						console.log(result);
 
-					const issueTransaction = await bondContract.requestIssue(
-						ethers.utils.parseUnits(faceValue.toString(), collateralTokenDecimals),
-						signerAddress,
-						collateralTokenSymbol,
-						collateralAddress
-					);
+						// const _apy = ethers.utils.parseUnits((apyOffered / 100).toString(), collateralTokenDecimals);
+						// const _faceValue = ethers.utils.parseUnits((faceValue / 100).toString(), collateralTokenDecimals);
 
-					console.log('issueTransaction', issueTransaction);
-
-					// const result = await fetch(`https://api.thegraph.com/subgraphs/name/verified-network/payments`, {
-					//   method: 'POST',
-					//   headers: { 'Content-Type': 'application/json' },
-					//   body: JSON.stringify({
-					//     query: `{
-					//       users(where: {bondIssues_: {id_gt: "0"}}) {
-					//         accountid
-					//         bondIssues(orderBy: issueTime, orderDirection: desc) {
-					//           bondName
-					//           id
-					//           issueTime
-					//           issuedAmount
-					//           collateralAmount
-					//         }
-					//         id
-					//       }
-					//     }`
-					//   }),
-					// }).then((res) => res.json());
-					// console.log(result);
-					// return;
-
-					// const _apy = ethers.utils.parseUnits((apyOffered / 100).toString(), collateralTokenDecimals);
-					// const _faceValue = ethers.utils.parseUnits((faceValue / 100).toString(), collateralTokenDecimals);
-
-					// console.log('Calling submitNewRWA function...', assetAddress, collateralAddress, _apy, issuingDocumentIPFSURL, _faceValue);
-					// const verifiedMarketsContract = new Compound(signer, verifiedContractAddress);
-					// const submitNewRWATransaction = await verifiedMarketsContract.submitNewRWA(assetAddress, collateralAddress, _apy, issuingDocumentIPFSURL, _faceValue, { gasLimit: 300000 })
-
+						// console.log('Calling submitNewRWA function...', assetAddress, collateralAddress, _apy, issuingDocumentIPFSURL, _faceValue);
+						// const verifiedMarketsContract = new Compound(signer, verifiedContractAddress);
+						// const submitNewRWATransaction = await verifiedMarketsContract.submitNewRWA(assetAddress, collateralAddress, _apy, issuingDocumentIPFSURL, _faceValue, { gasLimit: 300000 })
+					}
+					setActiveStep((prevActiveStep) => prevActiveStep + 1);
 					// Reset the form after successful submission
 					// setAssetAddress('');
 					// setCollateralAddress('');
@@ -152,8 +154,6 @@ const AssetIssuanceForm: React.FC = function () {
 					// setApyOffered('');
 					// setSelectedCurrency('');
 					// setIssuingDocument(null);
-					setActiveStep((prevActiveStep) => prevActiveStep + 1);
-					console.log('Form submitted successfully');
 				} else {
 					throw new Error('MetaMask not detected');
 				}
@@ -162,10 +162,6 @@ const AssetIssuanceForm: React.FC = function () {
 			console.error('Error submitting transaction:', error);
 		}
 
-	};
-
-	const handleNext = async () => {
-		if(activeStep === 0) await handleSubmit();
 	};
 
 	return (
@@ -186,7 +182,7 @@ const AssetIssuanceForm: React.FC = function () {
 					})}
 				</Stepper>
 				{activeStep === steps.length ? (
-					<React.Fragment>
+					<>
 						<Typography sx={{ mt: 2, mb: 1 }}>
 							All steps completed - you&apos;re finished
 						</Typography>
@@ -194,9 +190,9 @@ const AssetIssuanceForm: React.FC = function () {
 							<Box sx={{ flex: '1 1 auto' }} />
 							<button className='button--large button--supply' onClick={handleMore}>More</button>
 						</Box>
-					</React.Fragment>
+					</>
 				) : (
-					<React.Fragment>
+					<>
 						<Typography sx={{ mt: 2, mb: 1 }}>
 							{activeStep === 0 && (
 								<div className='main2'>
@@ -281,11 +277,11 @@ const AssetIssuanceForm: React.FC = function () {
 								Back
 							</button>
 							<Box sx={{ flex: '1 1 auto' }} />
-							<button className='button--large button--supply' onClick={handleNext}>
+							<button className='button--large button--supply' onClick={handleSubmit}>
 								{activeStep === steps.length - 1 ? 'Finish' : 'Next'}
 							</button>
 						</Box>
-					</React.Fragment>
+					</>
 				)}
 			</Box>
 		</div>
@@ -293,5 +289,3 @@ const AssetIssuanceForm: React.FC = function () {
 };
 
 export default AssetIssuanceForm;
-
-

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ethers } from 'ethers';
-import Bond from '@verified-network/verified-sdk/dist/abi/payments/Bond.json'
 import VerifiedContractAddress from '@verified-network/verified-sdk/dist/contractAddress'
+import { Bond } from '@verified-network/verified-sdk';
 import ERC20 from '../abis/ERC20';
 import './issue_form.css';
 
@@ -56,7 +56,7 @@ const ProvideCollateralForm: React.FC = function () {
           const signer = provider.getSigner();
 
           // Bond contract instance
-          const bondContract = new ethers.Contract(bondContractAddress, (Bond as any).abi, signer);
+		  const bondContract = new Bond(signer, bondContractAddress);
           const signerAddress = await signer.getAddress();
 
           // ERC-20 token contract instance for the selected currency
