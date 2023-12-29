@@ -6,13 +6,15 @@ import ERC20 from '../abis/ERC20';
 import './form.css';
 
 const RepayLoanForm: React.FC = function () {
+  // State variables to manage form inputs
 	const [baseAddress, setBaseAddress] = useState('');
 	const [faceValue, setFaceValue] = useState<number | ''>('');
 
+  // Handle form submission
 	const handleSubmit = async (event: React.FormEvent) => {
 		event.preventDefault();
 
-		// Handle form submission here
+		// Check if baseAddress and faceValue are provided
 		if (!baseAddress || !faceValue) {
 			return;
 		}
@@ -22,12 +24,15 @@ const RepayLoanForm: React.FC = function () {
 				console.error('MetaMask not detected');
 				return;
 			}
+
 			console.log('Before eth_requestAccounts');
 
 			// Request accounts using ethereum.request
 			await (window.ethereum as any).request({ method: 'eth_requestAccounts' });
+
 			console.log('After eth_requestAccounts');
 
+			// Create a Web3Provider using MetaMask
 			const provider = new ethers.providers.Web3Provider(window.ethereum);
 
 			// Get the network information
@@ -41,16 +46,22 @@ const RepayLoanForm: React.FC = function () {
 				console.error(`Contract addresses not found for network ID: ${networkId}`);
 				return;
 			}
+
+			// Get the signer for the connected account
 			const signer = provider.getSigner();
 
+			// Create a contract instance for the ERC20 token
 			const tokenContract = new ethers.Contract(baseAddress, ERC20, signer);
 			const tokenDecimals = await tokenContract.decimals();
 
-			//Contract instance
+			// Create a contract instance for the Compound contract
 			const verifiedMarketsContract = new Compound(signer, contractAddress.Compound);
-			console.log(baseAddress, ethers.utils.parseUnits(faceValue.toString(), tokenDecimals), { gasLimit: 300000 })
-			//Call the repayBase function
-			await verifiedMarketsContract.repayBase(baseAddress, ethers.utils.parseUnits(faceValue.toString(), tokenDecimals), { gasLimit: 300000 });
+
+			// Convert faceValue to the appropriate format based on token decimals
+			const faceValueInWei = ethers.utils.parseUnits(faceValue.toString(), tokenDecimals);
+
+			// Call the repayBase function with the provided parameters
+			await verifiedMarketsContract.repayBase(baseAddress, faceValueInWei, { gasLimit: 300000 });
 
 			console.log(`Repay loan for asset ${baseAddress} with amount ${faceValue}`);
 
@@ -64,6 +75,7 @@ const RepayLoanForm: React.FC = function () {
 			<h4>Repay Loan Form</h4>
 			<form onSubmit={handleSubmit}>
 				<div className='main2'>
+					{/* Base Address input field */}
 					<div className='form-field'>
 						<label>Base Address</label>
 						<input
@@ -74,6 +86,7 @@ const RepayLoanForm: React.FC = function () {
 						/>
 					</div>
 
+					{/* Amount input field */}
 					<div className='form-field'>
 						<label>Amount</label>
 						<input
@@ -85,6 +98,7 @@ const RepayLoanForm: React.FC = function () {
 					</div>
 
 				</div>
+				{/* Submit button */}
 				<button className='button button--large button--supply' type='submit'>Submit</button>
 			</form>
 		</div>

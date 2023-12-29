@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import TableData from './issuer_data';
 import '../styles/main.scss';
 import '../styles/components/_button.scss';
@@ -103,7 +104,9 @@ const Issuer: React.FC = () => {
 						<div className="button-container1">
 
 							<li className="link-container">
-								<a href="/" className="link-container2">Borrowing capacity left</a>
+								<Link to="/">
+									<a className="link-container2">Borrowing capacity left</a>
+								</Link>
 							</li>
 
 							<button className="sidebar-button button--large button--supply" onClick={() => handleButtonClick('Borrow')}>

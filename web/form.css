@@ -1,6 +1,5 @@
 /* form.css */
 .main {
-	text-align: center;
 	background-color: black;
 	width: 75%;
 	height: 55%;
@@ -14,10 +13,11 @@
 
 .main>h4 {
 	margin-bottom: 10px;
+	text-align: center;
 }
 
 .main2 {
-	display: inline-block;
+	display: block;
 	text-align: left;
 	border: 1px dashed #ccc;
 	padding: 15px 25px;
@@ -84,4 +84,23 @@ button:hover {
 
 .button--back {
 	color: #00c289;
+}
+
+label.css-1jy569b-MuiFormLabel-root-MuiInputLabel-root {
+	color: white;
+}
+.css-1jy569b-MuiFormLabel-root-MuiInputLabel-root.Mui-focused {
+	color: #00c289 !important;
+}
+label.css-14s5rfu-MuiFormLabel-root-MuiInputLabel-root {
+	color: white;
+}
+div.MuiOutlinedInput-root fieldset {
+	border-color: white;
+}
+div.MuiOutlinedInput-root:hover fieldset {
+	border-color: #00c189 !important;
+}
+div.MuiOutlinedInput-root.Mui-focused fieldset {
+	border-color: #00c189 !important;
 }
