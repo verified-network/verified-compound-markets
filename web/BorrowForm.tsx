@@ -10,7 +10,6 @@ import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import Typography from '@mui/material/Typography';
 
-const CurrencyOptions = ['USD', 'EUR', 'GBP', 'INR']; // Add more currency options as needed
 const steps = ['Post Collateral', 'Borrow'];
 
 const RepayLoanForm: React.FC = function () {
@@ -28,7 +27,7 @@ const RepayLoanForm: React.FC = function () {
 		setActiveStep(0);
 	};
 
-	const handleSubmit = async (event: React.FormEvent) => {
+	const handleSubmit = async () => {
 		try {
 			if (!assetAddress || !collateralAddress) {
 				return;
@@ -69,6 +68,7 @@ const RepayLoanForm: React.FC = function () {
 				if (!borrowAmount || !baseAddress) {
 					return;
 				}
+				console.log(baseAddress, ethers.utils.parseUnits(borrowAmount.toString(), collateralTokenDecimals), { gasLimit: 300000 });
 				await verifiedMarketsContract.borrowBase(baseAddress, ethers.utils.parseUnits(borrowAmount.toString(), collateralTokenDecimals), { gasLimit: 300000 });
 				console.log(`Borrowed ${borrowAmount} from Compound using base ${baseAddress}`);
 			}

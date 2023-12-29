@@ -5,8 +5,6 @@ import { Compound } from '@verified-network/verified-sdk';
 import ERC20 from '../abis/ERC20';
 import './form.css';
 
-const CurrencyOptions = ['USD', 'EUR', 'GBP', 'INR']; // Add more currency options as needed
-
 const RepayLoanForm: React.FC = function () {
 	const [baseAddress, setBaseAddress] = useState('');
 	const [faceValue, setFaceValue] = useState<number | ''>('');
@@ -50,7 +48,7 @@ const RepayLoanForm: React.FC = function () {
 
 			//Contract instance
 			const verifiedMarketsContract = new Compound(signer, contractAddress.Compound);
-
+			console.log(baseAddress, ethers.utils.parseUnits(faceValue.toString(), tokenDecimals), { gasLimit: 300000 })
 			//Call the repayBase function
 			await verifiedMarketsContract.repayBase(baseAddress, ethers.utils.parseUnits(faceValue.toString(), tokenDecimals), { gasLimit: 300000 });
 

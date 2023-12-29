@@ -1,11 +1,10 @@
 import '../styles/main.scss';
 import { RPC } from '@compound-finance/comet-extension';
-import { Fragment, useEffect, useMemo, useState } from 'react';
-import ERC20 from '../abis/ERC20';
+import { useEffect, useMemo, useState } from 'react';
 import Comet from '../abis/Comet';
-import { CTokenSym, Network, NetworkConfig, getNetwork, getNetworkById, getNetworkConfig, isNetwork, showNetwork } from './Network';
+import { Network, NetworkConfig, getNetworkById, getNetworkConfig } from './Network';
 import { JsonRpcProvider } from '@ethersproject/providers';
-import { Contract, ContractInterface } from '@ethersproject/contracts';
+import { Contract } from '@ethersproject/contracts';
 import { CircleCheckmark } from './Icons/CircleCheckmark';
 
 

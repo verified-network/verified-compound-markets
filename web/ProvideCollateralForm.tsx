@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ethers } from 'ethers';
 import VerifiedContractAddress from '@verified-network/verified-sdk/dist/contractAddress'
-import { Bond, Token } from '@verified-network/verified-sdk';
+import { Token } from '@verified-network/verified-sdk';
 import ERC20 from '../abis/ERC20';
 import './form.css';
 

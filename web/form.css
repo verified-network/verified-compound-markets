@@ -4,14 +4,11 @@
 	background-color: black;
 	width: 75%;
 	height: 55%;
-
 	justify-content: center;
 	margin-left: 13%;
 	padding-top: 1%;
-
 	margin-top: 5%;
 	color: #ffffff;
-
 	margin-top: 20px;
 }
 
@@ -34,6 +31,7 @@
 form {
 	display: grid;
 	margin-top: 10px;
+	overflow: auto;
 }
 
 .form-field {
@@ -45,7 +43,6 @@ form {
 label {
 	font-weight: bold;
 	color: black;
-	/* Black font color */
 	width: 200px;
 	font-size: 13px;
 	color: #ffffff;
@@ -59,7 +56,6 @@ select {
 	border-radius: 4px;
 	font-size: 13px;
 	color: black;
-	/* Black font color */
 }
 
 textarea {
@@ -69,7 +65,6 @@ textarea {
 	border-radius: 4px;
 	font-size: 12px;
 	color: black;
-	/* Black font color */
 }
 
 button {

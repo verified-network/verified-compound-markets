@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import './form.css';
 import { ethers } from 'ethers';
-import VerifierdMarkets from '@verified-network/verified-sdk/dist/abi/loans/compound/VerifiedMarkets.json';
 import VerifiedContractAddress from '@verified-network/verified-sdk/dist/contractAddress'
-import { VerifiedWallet, Bond, Compound, Provider } from '@verified-network/verified-sdk';
+import { Bond, Compound } from '@verified-network/verified-sdk';
 import axios from 'axios';
 import ERC20 from '../abis/ERC20';
 import Box from '@mui/material/Box';
@@ -150,13 +149,6 @@ const AssetIssuanceForm: React.FC = function () {
 						const submitNewRWATransaction = await verifiedMarketsContract.submitNewRWA(assetAddress, collateralAddress, _apy, issuingDocumentIPFSURL, _faceValue, { gasLimit: 300000 })
 					}
 					setActiveStep((prevActiveStep) => prevActiveStep + 1);
-					// Reset the form after successful submission
-					// setAssetAddress('');
-					// setCollateralAddress('');
-					// setFaceValue('');
-					// setApyOffered('');
-					// setSelectedCurrency('');
-					// setIssuingDocument(null);
 				} else {
 					throw new Error('MetaMask not detected');
 				}

@@ -19,11 +19,7 @@ interface TableRow {
 	"Status": string;
 }
 
-
 const Issuer: React.FC = () => {
-	const [showPopup, setShowPopup] = useState(false);
-	const [popupAction, setPopupAction] = useState('');
-	const [enteredNumber, setEnteredNumber] = useState<number | null>(null);
 	const [showIssuanceForm, setShowIssuanceForm] = useState(false);
 	const [showBorrowForm, setShowBorrowForm] = useState(false);
 	const [showRedeemCollateralForm, setShowRedeemCollateralForm] = useState(false);
@@ -66,32 +62,6 @@ const Issuer: React.FC = () => {
 		if (action === 'Borrow') setShowBorrowForm(true)
 		if (action === 'Redeem Collateral') setShowRedeemCollateralForm(true)
 		if (action === 'Repay Loan') setShowRepayLoanForm(true)
-		setPopupAction(action);
-	};
-
-
-	const handlePopupSubmit = async () => {
-		try {
-			// Handle the enteredNumber based on the popupAction (e.g., perform appropriate action)
-			console.log(`Action: ${popupAction}, Number: ${enteredNumber}`);
-
-			// Call the appropriate functions based on popupAction
-			if (popupAction === 'Redeem Collateral') {
-
-			} else if (popupAction === 'Borrow') {
-
-			} else if (popupAction === 'Repay Loan') {
-
-				console.error('Invalid action:', popupAction);
-			}
-		} catch (error) {
-			console.error('Error handling popup submit:', error);
-		} finally {
-			// Reset states after submission
-			setShowPopup(false);
-			setPopupAction('');
-			setEnteredNumber(null);
-		}
 	};
 
 	return (
@@ -162,25 +132,6 @@ const Issuer: React.FC = () => {
 					</div>
 				</div>
 			</div>
-
-			{/* {!showPopup && (
-        <div className="popup">
-          <h3>Enter a number:</h3>
-          <input
-            type="number"
-            value={enteredNumber !== null ? enteredNumber : ''}
-            onChange={(e) => setEnteredNumber(parseInt(e.target.value))}
-          />
-          <div className="buttons-container">
-            <button className="button-submit button--large button--supply" onClick={handlePopupSubmit}>
-              Submit
-            </button>
-            <button className="button-cancel button--large button--supply" onClick={() => setShowPopup(false)}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )} */}
 			{showBorrowForm && <Modal onClose={() => setShowBorrowForm(false)}>
 				<BorrowForm />
 			</Modal>}
