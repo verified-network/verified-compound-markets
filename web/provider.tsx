@@ -1,10 +1,10 @@
 // Import necessary dependencies and styles
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './ui.css';
 import { Link } from 'react-router-dom';
+import { ethers } from 'ethers';
 
 // Import data and components
-import TableData from './provider_data';
 import ProvideCollateralForm from './ProvideCollateralForm';
 import LiquidateCollateralForm from './LiquidateCollateralForm';
 import Modal from './Modal';
@@ -27,9 +27,7 @@ function Providers() {
 	// State variables for showing/hiding forms
 	const [showProvideCollateralForm, setShowProvideCollateralForm] = useState(false);
 	const [showLiquidateCollateralForm, setShowLiquidateCollateralForm] = useState(false);
-
-	// Sample data for the table
-	const data: TableRow[] = TableData;
+	const [tableData, setTableData] = useState<any>([]);
 
 	// Define the header names for the table
 	const headerNames: (keyof TableRow)[] = [
@@ -50,18 +48,58 @@ function Providers() {
 		});
 	};
 
-	// Helper component for rendering table data rows
-	const tdData = () => {
-		return data.map((rowData, rowIndex) => {
-			return (
-				<tr key={rowIndex}>
-					{headerNames.map((headerName) => {
-						return <td key={headerName}>{rowData[headerName]}</td>;
-					})}
-				</tr>
-			);
-		});
-	};
+	useEffect(() => {
+		const fetchData = async () => {
+			const provider = new ethers.providers.Web3Provider(window.ethereum);
+			const signer = provider.getSigner();
+			const signerAddress = await signer.getAddress();
+			const result = await fetch(`https://api.thegraph.com/subgraphs/name/verified-network/payments`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					query: `{
+						rwas {
+						  apy
+						  faceValue
+						  id
+						  issuingDocs
+						  issuer {
+							accountid
+						  }
+						}
+						user(id: "${signerAddress}") {
+						  bondIssues {
+							bondName
+							collateralAmount
+							issueTime
+							issuedAmount
+							id
+							token {
+							  token
+							  tokenName
+							  bondLiquidations {
+								liquidatedAmount
+								bondName
+								id
+								liquidatedValue
+							  }
+							  tokenType
+							  bondRedemptions {
+								bondName
+								id
+								redeemedValue
+								redemptionAmount
+							  }
+							}
+						  }
+						}
+					}`
+				}),
+			}).then((res) => res.json());
+			setTableData(result);
+		}
+		fetchData();
+	}, [])
 
 	// Handle button click to show relevant forms
 	const handleButtonClick = (action: string) => {
@@ -84,7 +122,23 @@ function Providers() {
 							<thead>
 								<tr>{ThData()}</tr>
 							</thead>
-							<tbody>{tdData()}</tbody>
+							<tbody>{
+								!tableData?.data?.rwas?.length ? (<tr>
+									<td colSpan={8}>No data</td>
+								</tr>) : (
+									tableData?.data?.user?.bondIssues.map((bond: any) => {
+										return <tr>
+											<td>{bond?.bondName}</td>
+											<td>{bond?.token?.tokenName}</td>
+											<td>{tableData?.data?.rwas[0]?.apy}</td>
+											<td>{tableData?.data?.rwas[0]?.faceValue}</td>
+											<td>{tableData?.data?.rwas[0]?.issuingDocs}</td>
+											<td>{bond?.collateralAmount ? 'Yes' : 'No'}</td>
+											<td>{(bond?.token?.bondLiquidations?.liquidatedAmount && bond?.token?.bondRedemptions?.redeemedValue) ? 'Yes' : 'No'}</td>
+										</tr>
+									})
+								)
+							}</tbody>
 						</table>
 					</div>
 					{null}

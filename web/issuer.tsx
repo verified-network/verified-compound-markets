@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import TableData from './issuer_data';
 import '../styles/main.scss';
 import '../styles/components/_button.scss';
 import Modal from './Modal';
@@ -8,14 +7,15 @@ import AssetIssuanceForm from './issue_form';
 import BorrowForm from './BorrowForm';
 import RepayLoanForm from './RepayLoanForm';
 import RedeemCollateralForm from './RedeemCollateralForm';
+import { ethers } from 'ethers';
 
 interface TableRow {
 	"Asset": string;
 	"Collateral": string;
 	"Issued value": string;
-	"sold value": string;
 	"Collateral posted": string;
 	"Borrowed": string;
+	"Repayments": string;
 	"APY": string;
 	"Status": string;
 }
@@ -25,16 +25,15 @@ const Issuer: React.FC = () => {
 	const [showBorrowForm, setShowBorrowForm] = useState(false);
 	const [showRedeemCollateralForm, setShowRedeemCollateralForm] = useState(false);
 	const [showRepayLoanForm, setShowRepayLoanForm] = useState(false);
-
-	const data: TableRow[] = TableData;
+	const [tableData, setTableData] = useState<any>([]);
 
 	const headerNames: (keyof TableRow)[] = [
 		'Asset',
 		'Collateral',
 		'Issued value',
-		'sold value',
 		'Collateral posted',
 		'Borrowed',
+		'Repayments',
 		'APY',
 		'Status',
 	];
@@ -46,24 +45,113 @@ const Issuer: React.FC = () => {
 		});
 	};
 
-	const tdData = () => {
-		return data.map((rowData, rowIndex) => {
-			return (
-				<tr key={rowIndex}>
-					{headerNames.map((headerName) => {
-						return <td key={headerName}>{rowData[headerName]}</td>;
-					})}
-				</tr>
-			);
-		});
-	};
-
 	const handleButtonClick = (action: string) => {
 		if (action === 'Issue new RWA') setShowIssuanceForm(true);
 		if (action === 'Borrow') setShowBorrowForm(true)
 		if (action === 'Redeem Collateral') setShowRedeemCollateralForm(true)
 		if (action === 'Repay Loan') setShowRepayLoanForm(true)
 	};
+
+	useEffect(() => {
+		const fetchData = async () => {
+			const provider = new ethers.providers.Web3Provider(window.ethereum);
+			const signer = provider.getSigner();
+			const signerAddress = await signer.getAddress();
+			const result = await fetch(`https://api.thegraph.com/subgraphs/name/verified-network/payments`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					query: `{
+						rwas(
+						  where: {issuer_: {accountid: "${signerAddress}"}}
+						) {
+						  id
+						  issuer {
+							id
+							name
+							client
+							accountid
+						  }
+						  asset {
+							id
+							security
+							productCategory
+							isin
+							currency
+							restricted
+							issueManager
+							restrictions
+							country
+							issuer {
+							  id
+							  name
+							  client
+							  accountid
+							}
+						  }
+						  bond {
+							id
+							token
+							tokenName
+							tokenType
+						  }
+						  apy
+						  issuingDocs
+						  faceValue
+						}
+						collaterizedLoans {
+						  id
+						  borrower {
+							id
+							name
+							client
+						  }
+						  base
+						  amount
+						}
+						collaterizedLoanRepayments {
+						  id
+						  borrower {
+							id
+							name
+							client
+						  }
+						  base
+						  amount
+						}
+						collaterals {
+						  id
+						  issuer {
+							id
+							name
+							client
+						  }
+						  asset {
+							id
+							security
+							productCategory
+							issuer {
+							  id
+							  name
+							  client
+							}
+							isin
+							currency
+							restricted
+							issueManager
+							restrictions
+							country
+						  }
+						  collateral
+						  amount
+						}
+					}`
+				}),
+			}).then((res) => res.json());
+			setTableData(result);
+		}
+		fetchData();
+	}, [])
 
 	return (
 
@@ -76,7 +164,26 @@ const Issuer: React.FC = () => {
 							<thead>
 								<tr>{ThData()}</tr>
 							</thead>
-							<tbody>{tdData()}</tbody>
+							<tbody>
+								{
+									!tableData?.data?.rwas?.length ? (<tr>
+										<td colSpan={8}>No data</td>
+									</tr>) : (
+										tableData?.data?.rwas.map((rwa: any, index:number) => {
+											return <tr>
+												<td>{rwa?.asset?.security}</td>
+												<td>{tableData?.data?.collaterals[index].amount}</td>
+												<td>{rwa?.asset?.faceValue}</td>
+												<td>{tableData?.data?.collaterizedLoanRepayments[index].amount}</td>
+												<td>{tableData?.data?.collaterals[index].amount}</td>
+												<td>{tableData?.data?.collaterizedLoans[index].amount}</td>
+												<td>{rwa?.asset?.apy}</td>
+												<td>{tableData?.data?.collaterizedLoanRepayments[index].amount ? 'Active' : 'Inactive'}</td>
+											</tr>
+										})
+									)
+								}
+							</tbody>
 						</table>
 					</div>
 
