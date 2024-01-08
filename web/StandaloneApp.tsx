@@ -12,11 +12,20 @@ function StandaloneApp() {
   const web3 = metamaskHooks.useProvider<Web3Provider>();
 
   React.useEffect(() => {
-    metamask.activate();
+    const checkMetaMask = async () => {
+      try {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        metamask.activate();
+      } catch (error) {
+        console.error('MetaMask not installed or not connected:', error);
+      }
+    };
+
+    checkMetaMask();
   }, []);
 
   if (web3) {
-    return <App web3={web3 as any} />
+    return <App web3={web3 as any} />;
   } else {
     return <div>Connecting...</div>;
   }
@@ -26,4 +35,4 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <StandaloneApp />
   </React.StrictMode>
-)
+);

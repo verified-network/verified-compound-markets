@@ -1,22 +1,22 @@
-import React from 'react';
-import './modal.css'; 
-import AssetIssuanceForm from './issue_form'; 
+import React, { ReactNode } from 'react';
+import './modal.css';
 
 interface ModalProps {
-  onClose: () => void;
+	onClose: () => void,
+	children: ReactNode
 }
 
-const Modal: React.FC<ModalProps> = ({ onClose }) => {
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <button className="modal-close-button button--large button--supply" onClick={onClose}>
-          Close
-        </button>
-        <AssetIssuanceForm />
-      </div>
-    </div>
-  );
+const Modal: React.FC<ModalProps> = ({ onClose, children }) => {
+	return (
+		<div className="modal-overlay">
+			<div className="modal-content">
+				<button className="modal-close-button button--large button--supply" onClick={onClose}>
+					Close
+				</button>
+				{children}
+			</div>
+		</div>
+	);
 };
 
 export default Modal;

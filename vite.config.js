@@ -34,6 +34,12 @@ export default defineConfig({
   resolve: {
     alias: {
       '/fonts': resolve(__dirname, 'node_modules/compound-styles/public/fonts'),
+      process: "process/browser",
+      stream: "stream-browserify",
+      zlib: "browserify-zlib",
+      util: "util/",
+      path: "path-browserify",
+      '@': resolve(__dirname, './src'),    
     },
   },
   optimizeDeps: {
