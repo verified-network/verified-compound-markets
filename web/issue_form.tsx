@@ -89,7 +89,7 @@ const AssetIssuanceForm: React.FC = function () {
     try {
       // Connect to MetaMask
       if (window.ethereum) {
-        console.log('MetaMask detected...');
+        console.log('Wallet detected...');
 
         // Request accounts using ethereum.request
         await (window.ethereum as any).request({ method: 'eth_requestAccounts' });
@@ -126,8 +126,8 @@ const AssetIssuanceForm: React.FC = function () {
           const signer = provider.getSigner();
 
           // Create instances of the Bond and Compound contracts
-          const bondContract = new ethers.Contract(bondContractAddress, Bond.abi, signer);
-          const verifiedMarketsContract = new ethers.Contract(verifiedContractAddress, Compound.abi, signer);
+          const bondContract = new Bond(signer, bondContractAddress);
+          const verifiedMarketsContract = new Compound(signer, verifiedContractAddress);
 
           // Get the signer's address
           const signerAddress = await signer.getAddress();

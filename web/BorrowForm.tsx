@@ -42,7 +42,7 @@ const RepayLoanForm: React.FC = function () {
 
             // Check if MetaMask is available
             if (!window.ethereum) {
-                console.error('MetaMask not detected');
+                console.error('Wallet not detected');
                 return;
             }
 

@@ -56,7 +56,7 @@ const Issuer: React.FC = () => {
 		const fetchData = async () => {
 			// Connect to MetaMask
 			if (window.ethereum) {
-				console.log('MetaMask detected...');
+				console.log('Wallet detected...');
 				const provider = new ethers.providers.Web3Provider(window.ethereum);
 				const signer = provider.getSigner();
 				const signerAddress = await signer.getAddress();

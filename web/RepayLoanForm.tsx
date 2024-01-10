@@ -6,11 +6,11 @@ import ERC20 from '../abis/ERC20';
 import './form.css';
 
 const RepayLoanForm: React.FC = function () {
-  // State variables to manage form inputs
+	// State variables to manage form inputs
 	const [baseAddress, setBaseAddress] = useState('');
 	const [faceValue, setFaceValue] = useState<number | ''>('');
 
-  // Handle form submission
+	// Handle form submission
 	const handleSubmit = async (event: React.FormEvent) => {
 		event.preventDefault();
 
@@ -21,7 +21,7 @@ const RepayLoanForm: React.FC = function () {
 		try {
 			// Connect to MetaMask
 			if (!window.ethereum) {
-				console.error('MetaMask not detected');
+				console.error('Wallet not detected');
 				return;
 			}
 

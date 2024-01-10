@@ -53,7 +53,7 @@ function Providers() {
 
 			// connect to Metamask
 			if (window.ethereum) {
-				console.log('Metamask detected...')
+				console.log('Wallet detected...')
 
 				const provider = new ethers.providers.Web3Provider(window.ethereum);
 				const signer = provider.getSigner();

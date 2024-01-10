@@ -48,7 +48,7 @@ const ProvideCollateralForm: React.FC = function () {
     try {
       // Connect to MetaMask
       if (window.ethereum) {
-        console.log('MetaMask detected...');
+        console.log('Wallet detected...');
 
         // Request accounts using ethereum.request
         await (window.ethereum as any).request({ method: 'eth_requestAccounts' });
@@ -100,7 +100,7 @@ const ProvideCollateralForm: React.FC = function () {
 
           console.log('Form submitted successfully');
         } else {
-          throw new Error('MetaMask not detected');
+          throw new Error('Wallet not detected');
         }
       }
     } catch (error) {
