@@ -50,14 +50,19 @@ function Providers() {
 
 	useEffect(() => {
 		const fetchData = async () => {
-			const provider = new ethers.providers.Web3Provider(window.ethereum);
-			const signer = provider.getSigner();
-			const signerAddress = await signer.getAddress();
-			const result = await fetch(`https://api.thegraph.com/subgraphs/name/verified-network/payments`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					query: `{
+
+			// connect to Metamask
+			if (window.ethereum) {
+				console.log('Metamask detected...')
+
+				const provider = new ethers.providers.Web3Provider(window.ethereum);
+				const signer = provider.getSigner();
+				const signerAddress = await signer.getAddress();
+				const result = await fetch(`https://api.thegraph.com/subgraphs/name/verified-network/payments`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						query: `{
 						rwas {
 						  apy
 						  faceValue
@@ -94,10 +99,11 @@ function Providers() {
 						  }
 						}
 					}`
-				}),
-			}).then((res) => res.json());
-			setTableData(result);
-		}
+					}),
+				}).then((res) => res.json());
+				setTableData(result);
+			}
+		};
 		fetchData();
 	}, [])
 

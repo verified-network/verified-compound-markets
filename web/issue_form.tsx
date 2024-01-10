@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './form.css';
 import { ethers } from 'ethers';
-import VerifiedContractAddress from '@verified-network/verified-sdk/dist/contractAddress'
+import VerifiedContractAddress from '@verified-network/verified-sdk/dist/contractAddress';
 import { Bond, Compound } from '@verified-network/verified-sdk';
 import axios from 'axios';
 import ERC20 from '../abis/ERC20';
@@ -14,6 +14,7 @@ import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
+
 
 // Define available currency options
 const CurrencyOptions = ['USD', 'EUR', 'GBP', 'INR']; // Add more currency options as needed
@@ -83,7 +84,7 @@ const AssetIssuanceForm: React.FC = function () {
       return;
     }
 
-	await uploadingFileToIPFS(issuingDocument);
+    await uploadingFileToIPFS(issuingDocument);
 
     try {
       // Connect to MetaMask
@@ -95,7 +96,7 @@ const AssetIssuanceForm: React.FC = function () {
 
         // Create a Web3 provider using MetaMask
         const provider = new ethers.providers.Web3Provider(window.ethereum);
-        
+
         // Get the current network information
         const network = await provider.getNetwork();
         const networkId = network.chainId;
@@ -103,11 +104,11 @@ const AssetIssuanceForm: React.FC = function () {
         // Retrieve contract addresses based on the network
         const ContractAddresses = await VerifiedContractAddress;
         const networkContractAddresses = ContractAddresses[networkId];
-        
+
         // Determine the selected currency contract key
         const selectedCurrencyContractKey = selectedCurrency === 'USD' ? 'VBUSD' :
           selectedCurrency === 'EUR' ? 'VBEUR' :
-          selectedCurrency === 'INR' ? 'VBINR' : 'VCCHF';
+            selectedCurrency === 'INR' ? 'VBINR' : 'VCCHF';
 
         // Get the bond contract address for the selected currency
         const bondContractAddress = networkContractAddresses?.BOND?.[selectedCurrencyContractKey];
@@ -123,10 +124,10 @@ const AssetIssuanceForm: React.FC = function () {
         if (verifiedContractAddress) {
           // Create a signer using the MetaMask provider
           const signer = provider.getSigner();
-          
+
           // Create instances of the Bond and Compound contracts
-          const bondContract = new Bond(signer, bondContractAddress);
-          const verifiedMarketsContract = new Compound(signer, verifiedContractAddress);
+          const bondContract = new ethers.Contract(bondContractAddress, Bond.abi, signer);
+          const verifiedMarketsContract = new ethers.Contract(verifiedContractAddress, Compound.abi, signer);
 
           // Get the signer's address
           const signerAddress = await signer.getAddress();
@@ -152,7 +153,7 @@ const AssetIssuanceForm: React.FC = function () {
             );
 
             console.log('Form submitted successfully');
-            
+
             // Fetch and display updated RWA list
             const result = await fetch(`https://api.thegraph.com/subgraphs/name/verified-network/payments`, {
               method: 'POST',
@@ -319,14 +320,14 @@ const AssetIssuanceForm: React.FC = function () {
                 </div>
               )}
               {/* RWA selection field for the second step */}
-              {activeStep === 1 && <FormControl sx={{marginTop: '30px'}} fullWidth>
+              {activeStep === 1 && <FormControl sx={{ marginTop: '30px' }} fullWidth>
                 <InputLabel id="demo-simple-select-label">RWA</InputLabel>
                 <Select
                   labelId="demo-simple-select-label"
                   id="demo-simple-select"
                   value={selectedRWA}
                   label="RWA"
-                  sx={{color:'white'}}
+                  sx={{ color: 'white' }}
                   onChange={handleChangeRWA}
                 >
                   {/* Map RWA options to dropdown options */}

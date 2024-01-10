@@ -54,14 +54,17 @@ const Issuer: React.FC = () => {
 
 	useEffect(() => {
 		const fetchData = async () => {
-			const provider = new ethers.providers.Web3Provider(window.ethereum);
-			const signer = provider.getSigner();
-			const signerAddress = await signer.getAddress();
-			const result = await fetch(`https://api.thegraph.com/subgraphs/name/verified-network/payments`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					query: `{
+			// Connect to MetaMask
+			if (window.ethereum) {
+				console.log('MetaMask detected...');
+				const provider = new ethers.providers.Web3Provider(window.ethereum);
+				const signer = provider.getSigner();
+				const signerAddress = await signer.getAddress();
+				const result = await fetch(`https://api.thegraph.com/subgraphs/name/verified-network/payments`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						query: `{
 						rwas(
 						  where: {issuer_: {accountid: "${signerAddress}"}}
 						) {
@@ -146,10 +149,11 @@ const Issuer: React.FC = () => {
 						  amount
 						}
 					}`
-				}),
-			}).then((res) => res.json());
-			setTableData(result);
-		}
+					}),
+				}).then((res) => res.json());
+				setTableData(result);
+			}
+		};
 		fetchData();
 	}, [])
 
@@ -169,7 +173,7 @@ const Issuer: React.FC = () => {
 									!tableData?.data?.rwas?.length ? (<tr>
 										<td colSpan={8}>No data</td>
 									</tr>) : (
-										tableData?.data?.rwas.map((rwa: any, index:number) => {
+										tableData?.data?.rwas.map((rwa: any, index: number) => {
 											return <tr>
 												<td>{rwa?.asset?.security}</td>
 												<td>{tableData?.data?.collaterals[index].amount}</td>

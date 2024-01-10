@@ -14,7 +14,7 @@ function StandaloneApp() {
   React.useEffect(() => {
     const checkMetaMask = async () => {
       try {
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        await (window.ethereum as any).request({ method: 'eth_requestAccounts' });
         metamask.activate();
       } catch (error) {
         console.error('MetaMask not installed or not connected:', error);
