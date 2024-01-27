@@ -2,6 +2,7 @@
   "name": "verified-compound-markets",
   "version": "0.1.0",
   "type": "module",
+  "license": "BUSL-1.1",
   "scripts": {
     "web:dev": "vite",
     "web:build": "tsc && vite build",
