@@ -1,0 +1,1 @@
+export const apyCurrencies = ["USD", "EUR", "AUD", "GBP"]

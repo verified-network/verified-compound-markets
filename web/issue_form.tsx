@@ -1,8 +1,10 @@
-
+// @ts-ignore
 import React, { useState } from 'react';
 import './issue_form.css';
+import { apyCurrencies } from './utils/constants';
+import { Bond, Compound} from '@verified-network/verified-sdk';
+import ContractAddress from '@verified-network/verified-sdk/dist/contractAddress';
 
-const CurrencyOptions = ['USD', 'EUR', 'GBP']; // Add more currency options as needed
 
 const AssetIssuanceForm: React.FC = () => {
   const [assetAddress, setAssetAddress] = useState('');
@@ -12,9 +14,12 @@ const AssetIssuanceForm: React.FC = () => {
   const [selectedCurrency, setSelectedCurrency] = useState('');
   const [issuingDocument, setIssuingDocument] = useState<File | null>(null);
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleRequestIssue = async() => {
+    // const bondContract =  new Bond()
+  }
+
+  const handleSubmit = async(event: React.FormEvent) => {
     event.preventDefault();
-    // Handle form submission here
   };
 
   return (
@@ -72,7 +77,7 @@ const AssetIssuanceForm: React.FC = () => {
               <option value='' disabled>
                 Select Currency
               </option>
-              {CurrencyOptions.map((currency) => (
+              {apyCurrencies.map((currency) => (
                 <option key={currency} value={currency}>
                   {currency}
                 </option>
