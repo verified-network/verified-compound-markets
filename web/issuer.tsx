@@ -5,6 +5,7 @@ import '../styles/components/_button.scss';
 import Modal from './Modal';
 import { Link } from 'react-router-dom';
 import AssetIssuanceForm from './issue_form';
+import { ComponentDefaultprops } from './utils/constants';
 
 interface TableRow {
   "Asset": string;
@@ -17,11 +18,10 @@ interface TableRow {
   "Status": string;
 }
 
-function Issuer() {
+function Issuer({web3, chainId, account, signer}: ComponentDefaultprops) {
   const [showPopup, setShowPopup] = useState(false);
   const [popupAction, setPopupAction] = useState('');
   const [enteredNumber, setEnteredNumber] = useState<number | null>(null);
-
   const data: TableRow[] = TableData;
 
   const headerNames: (keyof TableRow)[] = [
@@ -171,8 +171,8 @@ function Issuer() {
           </div>
         </div>
       )}
-        {showIssuanceForm && <AssetIssuanceForm />}
-        {showModal && <Modal onClose={closeModal} />}
+        {showIssuanceForm && <AssetIssuanceForm web3={web3}  chainId={chainId}  account={account} signer={signer}/>}
+        {showModal && <Modal onClose={closeModal} web3={web3}  chainId={chainId}  account={account} signer={signer} />}
       </div>
 
   );

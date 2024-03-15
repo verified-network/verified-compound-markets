@@ -32,18 +32,14 @@ export default defineConfig({
     },
   },
   resolve: {
-    resolve: {
-      alias: {
-        process: "process/browser",
-        stream: "stream-browserify",
-        zlib: "browserify-zlib",
-        util: "util/",
-        path: " path-browserify",
-        "/fonts": resolve(
-          __dirname,
-          "node_modules/compound-styles/public/fonts"
-        ),
-      },
+    alias: {
+      "/fonts": resolve(__dirname, "node_modules/compound-styles/public/fonts"),
+      process: "process/browser",
+      stream: "stream-browserify",
+      zlib: "browserify-zlib",
+      util: "util/",
+      path: "path-browserify",
+      "@": resolve(__dirname, "./src"),
     },
   },
   optimizeDeps: {
@@ -59,7 +55,7 @@ export default defineConfig({
       plugins: [
         NodeGlobalsPolyfillPlugin({
           buffer: true,
-          process: true,
+          protocolImports: true,
         }),
       ],
     },

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import './ui.css'; 
-import { Link } from 'react-router-dom';
+import { Link, redirect } from 'react-router-dom';
 import AssetIssuanceForm from './issue_form';
 import TableData from './provider_data';
 import '../styles/main.scss';
+import { ComponentDefaultprops } from './utils/constants';
 
 interface TableRow {
   "Asset": string;
@@ -16,11 +17,13 @@ interface TableRow {
   "Status": string;
 }
 
-function Providers() {
+
+
+function Providers({web3, account, chainId, signer}: ComponentDefaultprops) {
   const [showPopup, setShowPopup] = useState(false);
   const [popupAction, setPopupAction] = useState('');
   const [enteredNumber, setEnteredNumber] = useState<number | null>(null);
-
+  console.log("accts: ",  account)
  
 
   const data: TableRow[] = TableData;
@@ -75,7 +78,7 @@ function Providers() {
 
   return (
     
-      <div className="home__content">
+      <div  className="home__content">
         <div className="home__assets">
           <div className="panel panel--assets">
             

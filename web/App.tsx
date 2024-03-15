@@ -22,6 +22,7 @@ interface AppProps {
 type AppPropsExt<N extends Network> = AppProps & {
   account: string,
   networkConfig: NetworkConfig<N>
+  chainId: number | null,
 }
 
 interface AccountState<Network> {
@@ -56,7 +57,7 @@ function useAsyncEffect(fn: () => Promise<void>, deps: any[] = []) {
   }, deps);
 }
 
-export function App<N extends Network>({rpc, web3, account, networkConfig}: AppPropsExt<N>) {
+export function App<N extends Network>({rpc, web3, account, networkConfig, chainId}: AppPropsExt<N>) {
   let { cTokenNames } = networkConfig;
 
   const signer = useMemo(() => {
@@ -101,8 +102,8 @@ export function App<N extends Network>({rpc, web3, account, networkConfig}: AppP
       
       <Routes>
      
-      <Route path="/" element={<Providers />}> </Route>
-      <Route path ="/issue" element={ <Issuer/>}> </Route>
+      <Route path="/" element={<Providers web3={web3} account={account} chainId={chainId} signer={signer}/>}> </Route>
+      <Route path ="/issue" element={ <Issuer web3={web3} account={account} chainId={chainId} signer={signer}/>}> </Route>
 
       </Routes>
       
@@ -114,6 +115,7 @@ export function App<N extends Network>({rpc, web3, account, networkConfig}: AppP
 export default ({rpc, web3}: AppProps) => {
   let timer = usePoll(10000);
   const [account, setAccount] = useState<string | null>(null);
+  const [chainId, setChainId] = useState<number | null>(null);
   const [networkConfig, setNetworkConfig] = useState<NetworkConfig<Network> | 'unsupported' | null>(null);
 
   useAsyncEffect(async () => {
@@ -126,6 +128,7 @@ export default ({rpc, web3}: AppProps) => {
 
   useAsyncEffect(async () => {
     let networkWeb3 = await web3.getNetwork();
+    setChainId(networkWeb3.chainId);
     let network = getNetworkById(networkWeb3.chainId);
     if (network) {
       setNetworkConfig(getNetworkConfig(network));
@@ -138,7 +141,7 @@ export default ({rpc, web3}: AppProps) => {
     if (networkConfig === 'unsupported') {
       return <div>Unsupported network...</div>;
     } else {
-      return <App rpc={rpc} web3={web3} account={account} networkConfig={networkConfig} />;
+      return <App rpc={rpc} web3={web3} account={account} networkConfig={networkConfig} chainId={chainId} />;
     }
   } else {
     return <div>Loading...</div>;

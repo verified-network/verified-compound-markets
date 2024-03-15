@@ -1,26 +1,70 @@
 // @ts-ignore
 import React, { useState } from 'react';
 import './issue_form.css';
-import { apyCurrencies } from './utils/constants';
-import { Bond, Compound} from '@verified-network/verified-sdk';
-import ContractAddress from '@verified-network/verified-sdk/dist/contractAddress';
+import { CurrenciesToBondMapping, ComponentDefaultprops } from './utils/constants';
+import { Bond, Compound, contractAddress} from '@verified-network/verified-sdk';
+import { Contract } from '@ethersproject/contracts';
+import {parseUnits} from '@ethersproject/units'
+import ERC20 from '../abis/ERC20';
 
 
-const AssetIssuanceForm: React.FC = () => {
+
+const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, account, signer}) => {
   const [assetAddress, setAssetAddress] = useState('');
   const [collateralAddress, setCollateralAddress] = useState('');
   const [faceValue, setFaceValue] = useState<number | ''>('');
   const [apyOffered, setApyOffered] = useState<number | ''>('');
-  const [selectedCurrency, setSelectedCurrency] = useState('');
+  const [selectedCurrencyBond, setSelectedCurrencyBond] = useState<string>('');
   const [issuingDocument, setIssuingDocument] = useState<File | null>(null);
 
+  const chainContractAddresses = contractAddress[chainId || 0];
+
   const handleRequestIssue = async() => {
-    // const bondContract =  new Bond()
+    const collateralContract = new Contract(collateralAddress, ERC20, signer!);
+    const collateralSymbol = await collateralContract.symbol().catch((err: any) =>  {
+      //Todo: toast here
+      console.error("Error  while getting provided collateral symbol: ", err)
+      return null
+    });
+    const collateralDecimals = await collateralContract.decimals().catch((err: any) =>  {
+      //Todo: toast here
+      console.error("Error  while getting provided collateral decimals: ", err)
+      return null
+    });
+    if(collateralSymbol && collateralDecimals) {
+      const bondContractAddresses = chainContractAddresses["BOND"];
+      const bondContract = new Bond(signer!, bondContractAddresses[selectedCurrencyBond]);
+      return await bondContract.requestIssue(parseUnits(faceValue.toString(), collateralDecimals), account, collateralSymbol, collateralAddress);
+    }
   }
 
   const handleSubmit = async(event: React.FormEvent) => {
     event.preventDefault();
+    if(chainId && account && signer) {
+      if(
+        collateralAddress !== '' && assetAddress !== '' && selectedCurrencyBond !== '' 
+        && faceValue !== '' && apyOffered !== '' && issuingDocument
+      ) {
+        await handleRequestIssue().then((res: any) => {
+         if(res && res.status === 0) {
+          //pin issue docs to ipfs
+          //call submitNewRWA
+         }else{
+          res && res.message ?
+          console.error("Error from request Issue: ", res.message)
+          //Todo: toast here
+          : console.error("Error from request Issue: Transaction Failed")
+          //Todo: toast here
+          
+         }
+        });
+      }
+    }else{
+      console.error("No Wallet found. Connect account and try again")
+      //Todo: Toast here
+    }
   };
+  
 
   return (
     <div className='main'>
@@ -70,14 +114,14 @@ const AssetIssuanceForm: React.FC = () => {
           <div className='form-field'>
             <label>APY Offered for Currency</label>
             <select
-              value={selectedCurrency}
-              onChange={(e) => setSelectedCurrency(e.target.value)}
+              value={selectedCurrencyBond}
+              onChange={(e) => setSelectedCurrencyBond(CurrenciesToBondMapping[e.target.value])}
               required
             >
               <option value='' disabled>
                 Select Currency
               </option>
-              {apyCurrencies.map((currency) => (
+              {Object.keys(CurrenciesToBondMapping).map((currency: string) => (
                 <option key={currency} value={currency}>
                   {currency}
                 </option>
@@ -92,6 +136,7 @@ const AssetIssuanceForm: React.FC = () => {
               onChange={(e) => setIssuingDocument(e.target.files?.[0] || null)}
               required
             />
+             <label style={{paddingLeft: "1rem"}}>{issuingDocument?.name}</label>
           </div>
 
           <button className ='button button--large button--supply'>Submit</button>
