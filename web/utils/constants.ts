@@ -10,6 +10,20 @@ export const CurrenciesToBondMapping: any = {
 export interface ComponentDefaultprops {
     web3?: any,
     chainId: number | null
-    account: string[] | string | null
+    account: string | null
     signer: any
+}
+
+export const pinataDedicatedGateway = null;
+
+export const pinataDefaultGateway = "https://ipfs.io"
+
+export const subgraphConfig: any = {
+    5: {
+        subgraphUrl: "https://api.thegraph.com/subgraphs/name/verified-network/payments/"
+    },
+
+    1: {
+        subgraphUrl: ""
+    }
 }

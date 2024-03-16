@@ -1,11 +1,12 @@
 // @ts-ignore
 import React, { useState } from 'react';
 import './issue_form.css';
-import { CurrenciesToBondMapping, ComponentDefaultprops } from './utils/constants';
+import { CurrenciesToBondMapping, ComponentDefaultprops, pinataDedicatedGateway, pinataDefaultGateway, subgraphConfig } from './utils/constants';
 import { Bond, Compound, contractAddress} from '@verified-network/verified-sdk';
 import { Contract } from '@ethersproject/contracts';
 import {parseUnits} from '@ethersproject/units'
 import ERC20 from '../abis/ERC20';
+import { fetchUserDetails, pinToIpfs } from './utils/utils';
 
 
 
@@ -19,23 +20,37 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
 
   const chainContractAddresses = contractAddress[chainId || 0];
 
-  const handleRequestIssue = async() => {
-    const collateralContract = new Contract(collateralAddress, ERC20, signer!);
-    const collateralSymbol = await collateralContract.symbol().catch((err: any) =>  {
-      //Todo: toast here
-      console.error("Error  while getting provided collateral symbol: ", err)
-      return null
-    });
-    const collateralDecimals = await collateralContract.decimals().catch((err: any) =>  {
-      //Todo: toast here
-      console.error("Error  while getting provided collateral decimals: ", err)
-      return null
-    });
-    if(collateralSymbol && collateralDecimals) {
+  const handleRequestIssue = async(collateralContract: any, collateralSymbol: string, collateralDecimals: number) => {
+    if(collateralContract && collateralSymbol && collateralDecimals) {
       const bondContractAddresses = chainContractAddresses["BOND"];
-      const bondContract = new Bond(signer!, bondContractAddresses[selectedCurrencyBond]);
-      return await bondContract.requestIssue(parseUnits(faceValue.toString(), collateralDecimals), account, collateralSymbol, collateralAddress);
+      if (!bondContractAddresses) {
+        console.error(`Bond contract for chain id: ${chainId} does not exist`)
+        return;
+      }
+      return await collateralContract.approve(bondContractAddresses, parseUnits(faceValue.toString(), collateralDecimals)).then(async() => {
+        //Todo: check contract behaviour to handle toast
+        const bondContract = new Bond(signer!, bondContractAddresses[selectedCurrencyBond]);
+        return await bondContract.requestIssue(parseUnits(faceValue.toString(), collateralDecimals), account, collateralSymbol, collateralAddress);
+      }).catch((err: any) => {
+        console.error("Approval transaction failed with error: ", err);
+        //Toast here
+        return;
+      });
     }
+  }
+
+  const handleSubmitNewRWA = async(collateralDecimals: number, issueingDocUrl: string) => {
+    const compoundAddress = chainContractAddresses["Compound"];
+    if(!compoundAddress) {
+      console.error(`Compound contract for chain id: ${chainId} does not exist`)
+      return;
+    }
+    const userDetails = await fetchUserDetails(subgraphConfig[chainId!], account!);
+    const bondIssued = userDetails.bondIssues.id; //Todo: confirm if bond is bond id or token{ id}
+    const operatorContract = new Compound(signer!, compoundAddress);
+    const apyOfferedFmt = parseUnits(apyOffered.toString(), collateralDecimals);
+    const faceValueFmt = parseUnits(faceValue.toString(), collateralDecimals); 
+    return await operatorContract.submitNewRWA(assetAddress!, bondIssued, apyOfferedFmt, issueingDocUrl, faceValueFmt)
   }
 
   const handleSubmit = async(event: React.FormEvent) => {
@@ -45,10 +60,35 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
         collateralAddress !== '' && assetAddress !== '' && selectedCurrencyBond !== '' 
         && faceValue !== '' && apyOffered !== '' && issuingDocument
       ) {
-        await handleRequestIssue().then((res: any) => {
-         if(res && res.status === 0) {
-          //pin issue docs to ipfs
-          //call submitNewRWA
+        const collateralContract = new Contract(collateralAddress, ERC20, signer!);
+        const collateralSymbol = await collateralContract.symbol().catch((err: any) =>  {
+          //Todo: toast here
+          console.error("Error  while getting provided collateral symbol: ", err)
+          return null
+        });
+        const collateralDecimals = await collateralContract.decimals().catch((err: any) =>  {
+          //Todo: toast here
+          console.error("Error  while getting provided collateral decimals: ", err)
+          return null
+        });
+        await handleRequestIssue(collateralContract, collateralSymbol, collateralDecimals).then(async(res: any) => {
+         if(res && res.response.hash) {
+          console.log("Successful RequestIssue transaction with hash: ", res.response.hash)
+          //toast here
+          //pin issue docs to ipfs(todo: should this be done first??)
+          const issueingDocHash = await pinToIpfs(issuingDocument, collateralAddress, chainId!, account!);
+          if(issueingDocHash) {
+            const issueingDocUrl = `${pinataDedicatedGateway || pinataDefaultGateway}/ipfs/${issueingDocHash}`;
+            //call submitNewRWA
+            await handleSubmitNewRWA(collateralDecimals, issueingDocUrl).then((res) => {
+              if(res && res.response.hash) {
+                console.log("Successful SubmitNewRWA transaction with hash: ", res.response.hash)
+                //toast here
+              }
+            });
+          }else{
+            //Todo: toast here
+          }
          }else{
           res && res.message ?
           console.error("Error from request Issue: ", res.message)
@@ -60,7 +100,7 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
         });
       }
     }else{
-      console.error("No Wallet found. Connect account and try again")
+      console.error("No Wallet found. Connect wallet and try again")
       //Todo: Toast here
     }
   };
