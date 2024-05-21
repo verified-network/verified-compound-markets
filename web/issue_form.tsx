@@ -18,7 +18,9 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
   const [selectedCurrencyBond, setSelectedCurrencyBond] = useState<string>('');
   const [issuingDocument, setIssuingDocument] = useState<File | null>(null);
 
-  const chainContractAddresses = contractAddress[chainId || 0];
+  let chainContractAddresses: any = contractAddress;
+  chainContractAddresses = chainContractAddresses[chainId!]
+
 
   const handleRequestIssue = async(collateralContract: any, collateralSymbol: string, collateralDecimals: number) => {
     if(collateralContract && collateralSymbol && collateralDecimals) {
@@ -30,7 +32,7 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
       return await collateralContract.approve(bondContractAddresses, parseUnits(faceValue.toString(), collateralDecimals)).then(async() => {
         //Todo: check contract behaviour to handle toast
         const bondContract = new Bond(signer!, bondContractAddresses[selectedCurrencyBond]);
-        return await bondContract.requestIssue(parseUnits(faceValue.toString(), collateralDecimals), account, collateralSymbol, collateralAddress);
+        return await bondContract.requestIssue(parseUnits(faceValue.toString(), collateralDecimals).toString(), account, collateralSymbol, collateralAddress);
       }).catch((err: any) => {
         console.error("Approval transaction failed with error: ", err);
         //Toast here
@@ -42,14 +44,14 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
   const handleSubmitNewRWA = async(collateralDecimals: number, issueingDocUrl: string) => {
     const compoundAddress = chainContractAddresses["Compound"];
     if(!compoundAddress) {
-      console.error(`Compound contract for chain id: ${chainId} does not exist`)
+      console.error(`Compound/operator contract for chain id: ${chainId} does not exist`)
       return;
     }
-    const userDetails = await fetchUserDetails(subgraphConfig[chainId!], account!);
+    const userDetails = await fetchUserDetails(subgraphConfig[chainId!].subgraphUrl, account!);
     const bondIssued = userDetails.bondIssues.id; //Todo: confirm if bond is bond id or token{ id}
     const operatorContract = new Compound(signer!, compoundAddress);
-    const apyOfferedFmt = parseUnits(apyOffered.toString(), collateralDecimals);
-    const faceValueFmt = parseUnits(faceValue.toString(), collateralDecimals); 
+    const apyOfferedFmt = parseUnits(apyOffered.toString(), collateralDecimals).toString();
+    const faceValueFmt = parseUnits(faceValue.toString(), collateralDecimals).toString(); 
     return await operatorContract.submitNewRWA(assetAddress!, bondIssued, apyOfferedFmt, issueingDocUrl, faceValueFmt)
   }
 
@@ -72,7 +74,7 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
           return null
         });
         await handleRequestIssue(collateralContract, collateralSymbol, collateralDecimals).then(async(res: any) => {
-         if(res && res.response.hash) {
+         if(res && res.status === 0 && res.response && res.response.hash) {
           console.log("Successful RequestIssue transaction with hash: ", res.response.hash)
           //toast here
           //pin issue docs to ipfs(todo: should this be done first??)
@@ -80,14 +82,19 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
           if(issueingDocHash) {
             const issueingDocUrl = `${pinataDedicatedGateway || pinataDefaultGateway}/ipfs/${issueingDocHash}`;
             //call submitNewRWA
-            await handleSubmitNewRWA(collateralDecimals, issueingDocUrl).then((res) => {
-              if(res && res.response.hash) {
-                console.log("Successful SubmitNewRWA transaction with hash: ", res.response.hash)
+            await handleSubmitNewRWA(collateralDecimals, issueingDocUrl).then((_res: any) => {
+              if(_res && _res.status === 0 && _res.response && _res.response.hash) {
+                console.log("Successful SubmitNewRWA transaction with hash: ", _res.response.hash)
                 //toast here
-              }
+              }else{
+                _res && _res.message ?
+                console.error("Error from SubmitNewRWA: ", _res.message)
+                //Todo: toast here
+                : console.error("Error from SubmitNewRWA: Transaction Failed")
+                //Todo: toast here
+                
+               }
             });
-          }else{
-            //Todo: toast here
           }
          }else{
           res && res.message ?
