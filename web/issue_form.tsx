@@ -32,7 +32,7 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
       return await collateralContract.approve(bondContractAddresses, parseUnits(faceValue.toString(), collateralDecimals)).then(async() => {
         //Todo: check contract behaviour to handle toast
         const bondContract = new Bond(signer!, bondContractAddresses[selectedCurrencyBond]);
-        return await bondContract.requestIssue(parseUnits(faceValue.toString(), collateralDecimals).toString(), account, collateralSymbol, collateralAddress);
+        return await bondContract.requestIssue(parseUnits(faceValue.toString(), collateralDecimals).toString(), account!, collateralSymbol, collateralAddress);
       }).catch((err: any) => {
         console.error("Approval transaction failed with error: ", err);
         //Toast here
