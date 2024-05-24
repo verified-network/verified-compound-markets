@@ -1,8 +1,6 @@
-import '../styles/main.scss';
+// import '../styles/main.scss';
 import { RPC } from '@compound-finance/comet-extension';
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import ERC20 from '../abis/ERC20';
-import Comet from '../abis/Comet';
 import { CTokenSym, Network, NetworkConfig, getNetwork, getNetworkById, getNetworkConfig, isNetwork, showNetwork } from './Network';
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { Contract, ContractInterface } from '@ethersproject/contracts';
@@ -64,25 +62,7 @@ export function App<N extends Network>({rpc, web3, account, networkConfig, chain
     return web3.getSigner().connectUnchecked();
   }, [web3, account]);
 
-  const initialAccountState = () => ({
-    extEnabled: false,
-  });
-  const [accountState, setAccountState] = useState<AccountState<Network>>(initialAccountState);
 
-  const ext = useMemo(() => new Contract(networkConfig.extAddress, networkConfig.extAbi, signer), [signer]);
-  const comet = useMemo(() => new Contract(networkConfig.rootsV3.comet, Comet, signer), [signer]);
-
-  async function enableExt() {
-    console.log("enabling ext");
-    await comet.allow(ext.address, true);
-    console.log("enabled ext");
-  }
-
-  async function disableExt() {
-    console.log("disabling ext");
-    await comet.allow(ext.address, false);
-    console.log("disabling ext");
-  }
 
   return (
     <BrowserRouter>
@@ -90,12 +70,10 @@ export function App<N extends Network>({rpc, web3, account, networkConfig, chain
       <div className="container">
         <div className="masthead L1">
           <h1 className="L0 heading heading--emphasized">Verified RWA Markets</h1>
-          { accountState.extEnabled ?
-            <button className="button button--large button--supply" onClick={disableExt}>
-              <CircleCheckmark />
-              <label>Enabled</label>
-            </button> :
-            <button className="button button--large button--supply" onClick={enableExt}>Enable</button> }
+          {/* { account ?
+            <button className="button button--large button--supply" onClick={enableExt}>Connect Wallet</button> : 
+            <button className="button button--large button--supply" onClick={enableExt}>Disconnect</button>
+             } */}
         </div>
         
       </div>
