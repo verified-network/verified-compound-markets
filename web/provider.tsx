@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import './ui.css'; 
 import { Link, redirect } from 'react-router-dom';
-import AssetIssuanceForm from './issue_form';
 import TableData from './provider_data';
-import '../styles/main.scss';
 import { ComponentDefaultprops } from './utils/constants';
 import { Token, contractAddress } from '@verified-network/verified-sdk';
 import { parseUnits } from '@ethersproject/units';
@@ -13,10 +11,12 @@ interface TableRow {
   "Collateral": string;
   "APY": string;
   'Currency': string;
-  'Face value': string;
-  'Issuing docs': string;
-  "Collateral posted": string;
+  'Face Value': string;
+  'Issuing Docs': string;
+  "Collateral Posted": string;
   "Status": string;
+  "Action1": string,
+  "Action2": string,
 }
 
 
@@ -28,17 +28,19 @@ function Providers({web3, account, chainId, signer}: ComponentDefaultprops) {
   // console.log("accts: ",  account)
  
 
-  const data: TableRow[] = TableData; ////todo: update to subgraph rwa after RWA has been issued
+  const data: TableRow[] = TableData; //todo: update to subgraph rwa after RWA has been issued
 
   const headerNames: (keyof TableRow)[] = [
     "Asset",
     'Collateral',
     'APY',
     'Currency',
-    'Face value',
-    'Issuing docs',
-    'Collateral posted',
+    'Face Value',
+    'Issuing Docs',
+    'Collateral Posted',
     'Status',
+    'Action1',
+    'Action2'
   ];
 
   const ThData = () => {
@@ -50,11 +52,20 @@ function Providers({web3, account, chainId, signer}: ComponentDefaultprops) {
   const tdData = () => {
     return data.map((rowData, rowIndex) => {
       return (
-        <tr key={rowIndex}>
+        <tr  key={rowIndex}>
           {headerNames.map((headerName) => {
-            return <td key={headerName}>{rowData[headerName]}</td>;
+            if(!headerName.startsWith("Action")) {
+              return <td key={headerName}>{rowData[headerName]}</td>;
+            }else{
+              return <td key={rowData[headerName]}><button 
+              onClick={() => handleButtonClick(rowData[headerName])} 
+              className='sidebar-button button--large button--supply'>
+                {rowData[headerName]}
+              </button></td>;
+            }
           })}
         </tr>
+       
       );
     });
   };
@@ -142,20 +153,19 @@ function Providers({web3, account, chainId, signer}: ComponentDefaultprops) {
       <div  className="home__content">
         <div className="home__assets">
           <div className="panel panel--assets">
-            
-            
-              
-              <div className="assets-table">
-        <table className="table">
-          <thead>
-            <tr>{ThData()}</tr>
-          </thead>
-          <tbody>{tdData()}</tbody>
-        </table>
-      </div>
-            
+            <div className="assets-table">
+              <table className="table">
+                <thead>
+                  <tr>{ThData()}</tr>
+                </thead>
+                <tbody>{tdData()}</tbody>
+                
+              </table>
+              {data.length === 0 && (<div style={{paddingTop: "6px"}}>
+              Zero(0) Verified RWA(Real World Assets) Found. Click Issue New RWA Button to Issue New RWA/Bonds
+            </div>)}
+            </div>
             { null }
-            
           </div>
         </div>
        
@@ -199,12 +209,12 @@ function Providers({web3, account, chainId, signer}: ComponentDefaultprops) {
             
              
             
-        <button className="sidebar-button button--large button--supply" onClick={() => handleButtonClick('Provide Collateral')}>
+        {/* <button className="sidebar-button button--large button--supply" onClick={() => handleButtonClick('Provide Collateral')}>
           Provide Collateral
         </button>
         <button className="sidebar-button button--large button--supply" onClick={() => handleButtonClick('Liquidate Collateral')}>
           Liquidate Collateral
-        </button>
+        </button> */}
         
         <Link to="/issue">
         <button className='sidebar-button button--large button--supply'>Issue New RWA</button>

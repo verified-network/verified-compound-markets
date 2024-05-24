@@ -9,9 +9,9 @@ export const CurrenciesToBondMapping: any = {
 
 export interface ComponentDefaultprops {
     web3?: any,
-    chainId: number | null
-    account: string | null
-    signer: any
+    chainId?: number,
+    account?: string,
+    signer?: any
 }
 
 export const pinataDedicatedGateway = null;
@@ -27,3 +27,4 @@ export const subgraphConfig: any = {
         subgraphUrl: ""
     }
 }
+export const wallectConnectId = "61ff571878e5243b01e3264c14ed54b8"

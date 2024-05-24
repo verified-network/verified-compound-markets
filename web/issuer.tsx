@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import TableData from './issuer_data';
-import '../styles/main.scss';
 import '../styles/components/_button.scss';
 import Modal from './Modal';
 import { Link } from 'react-router-dom';
@@ -15,12 +14,15 @@ import { fetchUserDetails } from './utils/utils';
 interface TableRow {
   "Asset": string;
   "Collateral": string;
-  "Issued value": string;
-  "sold value": string;
-  "Collateral posted": string;
+  "Issued Value": string;
+  "sold Value": string;
+  "Collateral Posted": string;
   "Borrowed": string;
   "APY": string;
   "Status": string;
+  "Action1": string,
+  "Action2": string,
+  "Action3": string,
 }
 
 function Issuer({web3, chainId, account, signer}: ComponentDefaultprops) {
@@ -34,12 +36,15 @@ function Issuer({web3, chainId, account, signer}: ComponentDefaultprops) {
   const headerNames: (keyof TableRow)[] = [
     'Asset',
     'Collateral',
-    'Issued value',
-    'sold value',
-    'Collateral posted',
+    'Issued Value',
+    'sold Value',
+    'Collateral Posted',
     'Borrowed',
     'APY',
     'Status',
+    "Action1",
+    "Action2",
+    "Action3"
   ];
 
   const ThData = () => {
@@ -53,9 +58,18 @@ function Issuer({web3, chainId, account, signer}: ComponentDefaultprops) {
       return (
         <tr key={rowIndex}>
           {headerNames.map((headerName) => {
-            return <td key={headerName}>{rowData[headerName]}</td>;
+            if(!headerName.startsWith("Action")) {
+              return <td key={headerName}>{rowData[headerName]}</td>;
+            }else{
+              return <td key={rowData[headerName]}><button 
+              onClick={() => handleButtonClick(rowData[headerName])} 
+              className='sidebar-button button--large button--supply'>
+                {rowData[headerName]}
+              </button></td>;
+            }
           })}
         </tr>
+        
       );
     });
   };
@@ -231,6 +245,9 @@ function Issuer({web3, chainId, account, signer}: ComponentDefaultprops) {
           </thead>
           <tbody>{tdData()}</tbody>
         </table>
+        {data.length === 0 && (<div style={{paddingTop: "6px"}}>
+              You Have Zero(0) Verified RWA(Real World Assets). Click Issue New RWA Button to Issue New RWA/Bonds
+            </div>)}
       </div>
             
             { null }
@@ -259,7 +276,7 @@ function Issuer({web3, chainId, account, signer}: ComponentDefaultprops) {
               <li className="link-container">
               <a href="/" className="link-container2">Borrowing capacity left</a>
             </li>
-
+{/* 
              <button className="sidebar-button button--large button--supply" onClick={() => handleButtonClick('Borrow')}>
               Borrow
              </button>
@@ -273,7 +290,7 @@ function Issuer({web3, chainId, account, signer}: ComponentDefaultprops) {
 
               <button className="sidebar-button button--large button--supply" onClick={() => handleButtonClick('Repay Loan')}>
                Repay loan
-               </button>
+               </button> */}
         
              <button
               className="sidebar-button button--large button--supply"
@@ -281,6 +298,9 @@ function Issuer({web3, chainId, account, signer}: ComponentDefaultprops) {
               >
                 Issue new RWA
             </button>
+            <Link to="/">
+            <button className='sidebar-button button--large button--supply'>Previous Page</button>
+            </Link>
 
             </div>  
             </div>
