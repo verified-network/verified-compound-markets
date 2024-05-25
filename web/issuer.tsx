@@ -26,6 +26,7 @@ interface TableRow {
 function Issuer({web3, chainId, account, signer, page, setPage}: ComponentDefaultprops) {
   setPage("/issue")
   const [showPopup, setShowPopup] = useState(false);
+  const [showIssuerDetails, setShowIssuerDetails] = useState(false);
   const [popupAction, setPopupAction] = useState('');
   const [enteredNumber, setEnteredNumber] = useState<number | ''>('');
   const data: TableRow[] = TableData; //todo: update to subgraph rwa after RWA has been issued
@@ -91,6 +92,12 @@ function Issuer({web3, chainId, account, signer, page, setPage}: ComponentDefaul
                 >
                   Repay Loan
                 </div>
+                <div
+                 className="dropdown-action"
+                onClick={() => handleButtonClick("Issuer Details")}
+                >
+                  Issuer Details
+                </div>
                 </div>
               </td>
             }
@@ -105,7 +112,9 @@ function Issuer({web3, chainId, account, signer, page, setPage}: ComponentDefaul
     if (action === 'Issue new RWA') {
       // Handle Issue new RWA action
       setShowIssuanceForm(true);
-    } else {
+    } else if(action === "Issuer Details") {
+      setShowIssuerDetails(true)
+    }else{
       setShowPopup(true);
       setPopupAction(action);
     }
@@ -298,11 +307,7 @@ function Issuer({web3, chainId, account, signer, page, setPage}: ComponentDefaul
               </div>
 
 
-              <div className="button-container1">
-
-              <li className="link-container">
-              <a href="/" className="link-container2">Borrowing capacity left</a>
-            </li>        
+              <div className="button-container1">  
              <button
               className="sidebar-button button--large button--supply"
               onClick={openModal}
@@ -331,6 +336,51 @@ function Issuer({web3, chainId, account, signer, page, setPage}: ComponentDefaul
             </button>
           </div>
         </div>
+        )}
+        {showIssuerDetails && (
+          <div className="popup">
+            <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: "1"}}><b>Issuer Name</b></div>
+              <div style={{paddingLeft: "10px"}}>Moses Adeolu</div>
+            </div>
+            <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: "1"}}><b>Issuer Country</b></div>
+              <div style={{paddingLeft: "10px"}}>Nigeria</div>
+            </div>
+            <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: "1"}}><b>Number of issues by Issuer</b></div>
+              <div style={{paddingLeft: "10px"}}>100</div>
+            </div>
+            <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: "1"}}><b>Total borrowing for all issues</b></div>
+              <div style={{paddingLeft: "10px"}}>20</div>
+            </div>
+            <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: "1"}}><b>Borrowing for this issue</b></div>
+              <div style={{paddingLeft: "10px"}}>5</div>
+            </div>
+            <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: "1"}}><b>Total repayments for all issue</b></div>
+              <div style={{paddingLeft: "10px"}}>30</div>
+            </div>
+            <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: 1}}><b>Repayment of this issue</b></div>
+              <div style={{paddingLeft: "10px"}}>10</div>
+            </div>
+            <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: 1}}><b>Number of issues defaulted</b></div>
+              <div style={{paddingLeft: "10px", }}>90000000000</div>
+            </div>
+            <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: 1}}><b>Borrowing capacity left</b></div>
+              <div style={{paddingLeft: "10px", }}>50000</div>
+            </div>
+            <div style={{paddingTop: "10px"}} className="buttons-container">
+                  <button className="button-cancel button--large button--supply" onClick={() => setShowIssuerDetails(false)}>
+                    Close
+                  </button>
+                </div>
+          </div>
       )}
         {showIssuanceForm && <AssetIssuanceForm web3={web3}  chainId={chainId}  account={account} signer={signer}/>}
         {showModal && <Modal onClose={closeModal} web3={web3}  chainId={chainId}  account={account} signer={signer} />}
