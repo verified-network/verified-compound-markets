@@ -12,6 +12,8 @@ export interface ComponentDefaultprops {
     chainId?: number,
     account?: string,
     signer?: any
+    page?: string,
+    setPage?: any
 }
 
 export const pinataDedicatedGateway = null;

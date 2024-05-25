@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import TableData from './issuer_data';
 import '../styles/components/_button.scss';
 import Modal from './Modal';
-import { Link } from 'react-router-dom';
 import AssetIssuanceForm from './issue_form';
 import { ComponentDefaultprops, subgraphConfig } from './utils/constants';
 import { Token, Compound, contractAddress} from '@verified-network/verified-sdk';
@@ -13,6 +12,7 @@ import { fetchUserDetails } from './utils/utils';
 
 interface TableRow {
   "Asset": string;
+  "Issuer": string;
   "Collateral": string;
   "Issued Value": string;
   "sold Value": string;
@@ -20,12 +20,11 @@ interface TableRow {
   "Borrowed": string;
   "APY": string;
   "Status": string;
-  "Action1": string,
-  "Action2": string,
-  "Action3": string,
+  "Action": string;
 }
 
-function Issuer({web3, chainId, account, signer}: ComponentDefaultprops) {
+function Issuer({web3, chainId, account, signer, page, setPage}: ComponentDefaultprops) {
+  setPage("/issue")
   const [showPopup, setShowPopup] = useState(false);
   const [popupAction, setPopupAction] = useState('');
   const [enteredNumber, setEnteredNumber] = useState<number | ''>('');
@@ -35,6 +34,7 @@ function Issuer({web3, chainId, account, signer}: ComponentDefaultprops) {
 
   const headerNames: (keyof TableRow)[] = [
     'Asset',
+    'Issuer',
     'Collateral',
     'Issued Value',
     'sold Value',
@@ -42,30 +42,57 @@ function Issuer({web3, chainId, account, signer}: ComponentDefaultprops) {
     'Borrowed',
     'APY',
     'Status',
-    "Action1",
-    "Action2",
-    "Action3"
+    "Action"
   ];
 
   const ThData = () => {
     return headerNames.map((headerName) => {
-      return <th key={headerName}>{headerName}</th>;
+      if(account) {
+        return <th key={headerName}>{headerName}</th>;
+      }else if(!headerName.startsWith("Action")){
+        return <th key={headerName}>{headerName}</th>;
+      }
     });
   };
 
   const tdData = () => {
     return data.map((rowData, rowIndex) => {
       return (
-        <tr key={rowIndex}>
-          {headerNames.map((headerName) => {
+        <tr  key={rowIndex}>
+          {headerNames.map((headerName, idx) => {
             if(!headerName.startsWith("Action")) {
               return <td key={headerName}>{rowData[headerName]}</td>;
-            }else{
-              return <td key={rowData[headerName]}><button 
-              onClick={() => handleButtonClick(rowData[headerName])} 
-              className='sidebar-button button--large button--supply'>
-                {rowData[headerName]}
-              </button></td>;
+            }else if(account){
+              return <td>
+                 <button
+                  id="dropdown-button"
+                  onClick={() => {
+                    document.getElementById(`dropdown-content-${rowIndex}`)?.classList.toggle("show-dropdown")
+                  }}
+                className='sidebar-button button--large button--supply'>
+                  Actions
+                </button>
+                <div id={`dropdown-content-${rowIndex}`} className="dropdown-content">
+                <div
+                 className="dropdown-action"
+                onClick={() => handleButtonClick("Borrow")}   
+                >
+                  Borrow
+                </div>
+                <div 
+                className="dropdown-action"
+                onClick={() => handleButtonClick("Redeem Collateral")}   
+                >
+                  Redeem Collateral
+                </div>
+                <div
+                 className="dropdown-action"
+                onClick={() => handleButtonClick("Repay Loan")}
+                >
+                  Repay Loan
+                </div>
+                </div>
+              </td>
             }
           })}
         </tr>
@@ -275,33 +302,13 @@ function Issuer({web3, chainId, account, signer}: ComponentDefaultprops) {
 
               <li className="link-container">
               <a href="/" className="link-container2">Borrowing capacity left</a>
-            </li>
-{/* 
-             <button className="sidebar-button button--large button--supply" onClick={() => handleButtonClick('Borrow')}>
-              Borrow
-             </button>
-
-             <button
-                 className="sidebar-button button--large button--supply"
-                onClick={() => handleButtonClick('Redeem Collateral')}
-             >
-             Redeem collateral
-             </button>
-
-              <button className="sidebar-button button--large button--supply" onClick={() => handleButtonClick('Repay Loan')}>
-               Repay loan
-               </button> */}
-        
+            </li>        
              <button
               className="sidebar-button button--large button--supply"
               onClick={openModal}
               >
                 Issue new RWA
             </button>
-            <Link to="/">
-            <button className='sidebar-button button--large button--supply'>Previous Page</button>
-            </Link>
-
             </div>  
             </div>
           </div>

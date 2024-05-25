@@ -8,6 +8,7 @@ import { parseUnits } from '@ethersproject/units';
 
 interface TableRow {
   "Asset": string;
+  "Issuer": string,
   "Collateral": string;
   "APY": string;
   'Currency': string;
@@ -15,14 +16,15 @@ interface TableRow {
   'Issuing Docs': string;
   "Collateral Posted": string;
   "Status": string;
-  "Action1": string,
-  "Action2": string,
+  "Action": string
 }
 
 
 
-function Providers({web3, account, chainId, signer}: ComponentDefaultprops) {
+function Providers({web3, account, chainId, signer, page, setPage}: ComponentDefaultprops) {
+  setPage("/")
   const [showPopup, setShowPopup] = useState(false);
+  const [showIssuerDetails, setShowIssuerDetails] = useState(false);
   const [popupAction, setPopupAction] = useState('');
   const [enteredNumber, setEnteredNumber] = useState<number | ''>('');
   // console.log("accts: ",  account)
@@ -32,6 +34,7 @@ function Providers({web3, account, chainId, signer}: ComponentDefaultprops) {
 
   const headerNames: (keyof TableRow)[] = [
     "Asset",
+    "Issuer",
     'Collateral',
     'APY',
     'Currency',
@@ -39,13 +42,17 @@ function Providers({web3, account, chainId, signer}: ComponentDefaultprops) {
     'Issuing Docs',
     'Collateral Posted',
     'Status',
-    'Action1',
-    'Action2'
+    'Action'
   ];
+
 
   const ThData = () => {
     return headerNames.map((headerName) => {
-      return <th key={headerName}>{headerName}</th>;
+      if(account) {
+        return <th key={headerName}>{headerName}</th>;
+      }else if(!headerName.startsWith("Action")){
+        return <th key={headerName}>{headerName}</th>;
+      }
     });
   };
 
@@ -53,15 +60,40 @@ function Providers({web3, account, chainId, signer}: ComponentDefaultprops) {
     return data.map((rowData, rowIndex) => {
       return (
         <tr  key={rowIndex}>
-          {headerNames.map((headerName) => {
+          {headerNames.map((headerName, idx) => {
             if(!headerName.startsWith("Action")) {
               return <td key={headerName}>{rowData[headerName]}</td>;
-            }else{
-              return <td key={rowData[headerName]}><button 
-              onClick={() => handleButtonClick(rowData[headerName])} 
-              className='sidebar-button button--large button--supply'>
-                {rowData[headerName]}
-              </button></td>;
+            }else if(account){
+              return <td>
+                 <button
+                  id="dropdown-button"
+                  onClick={() => {
+                    document.getElementById(`dropdown-content-${rowIndex}`)?.classList.toggle("show-dropdown")
+                  }}
+                className='sidebar-button button--large button--supply'>
+                  Actions
+                </button>
+                <div id={`dropdown-content-${rowIndex}`} className="dropdown-content">
+                <div
+                 className="dropdown-action"
+                onClick={() => handleButtonClick("Provide Collateral")}   
+                >
+                  Provide Collateral
+                </div>
+                <div 
+                className="dropdown-action"
+                onClick={() => handleButtonClick("Liquidate Collateral")}   
+                >
+                  Liquidate Collateral
+                </div>
+                <div
+                 className="dropdown-action"
+                onClick={() => handleButtonClick("Issuer Details")}
+                >
+                  Issuer Details
+                </div>
+                </div>
+              </td>
             }
           })}
         </tr>
@@ -75,7 +107,7 @@ function Providers({web3, account, chainId, signer}: ComponentDefaultprops) {
       setShowPopup(true);
       setPopupAction(action);
     } else {
-      // Handle other button actions
+      setShowIssuerDetails(true)
     }
   };
 
@@ -159,7 +191,6 @@ function Providers({web3, account, chainId, signer}: ComponentDefaultprops) {
                   <tr>{ThData()}</tr>
                 </thead>
                 <tbody>{tdData()}</tbody>
-                
               </table>
               {data.length === 0 && (<div style={{paddingTop: "6px"}}>
               Zero(0) Verified RWA(Real World Assets) Found. Click Issue New RWA Button to Issue New RWA/Bonds
@@ -185,40 +216,6 @@ function Providers({web3, account, chainId, signer}: ComponentDefaultprops) {
               </div>
 
               <div className="buttons-cont">
-              
-             <li className="link-container">
-              <a href="/" className="link-container2">Number of issues by Issuer</a>
-            </li>
-            <li className="link-container">
-              <a href="/" className="link-container2">Total borrowing for all issues</a>
-            </li>
-            <li className="link-container">
-              <a href="/" className="link-container2"> Borrowing for this issue</a>
-            </li>
-            <li className="link-container">
-              <a href="/" className="link-container2">Total repayments for all issue</a>
-            </li>
-            <li className="link-container">
-              <a href="/" className="link-container2">Repayment of this issue</a>
-            </li>
-            <li className="link-container">
-              <a href="/" className="link-container2">Number of issues defaulted</a>
-            </li>
-             
-            
-            
-             
-            
-        {/* <button className="sidebar-button button--large button--supply" onClick={() => handleButtonClick('Provide Collateral')}>
-          Provide Collateral
-        </button>
-        <button className="sidebar-button button--large button--supply" onClick={() => handleButtonClick('Liquidate Collateral')}>
-          Liquidate Collateral
-        </button> */}
-        
-        <Link to="/issue">
-        <button className='sidebar-button button--large button--supply'>Issue New RWA</button>
-      </Link>
         </div>
       
               
@@ -242,6 +239,47 @@ function Providers({web3, account, chainId, signer}: ComponentDefaultprops) {
             </button>
           </div>
         </div>
+      )}
+      {showIssuerDetails && (
+          <div className="popup">
+            <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: "1"}}><b>Issuer Name</b></div>
+              <div style={{paddingLeft: "10px"}}>Moses Adeolu</div>
+            </div>
+            <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: "1"}}><b>Issuer Country</b></div>
+              <div style={{paddingLeft: "10px"}}>Nigeria</div>
+            </div>
+            <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: "1"}}><b>Number of issues by Issuer</b></div>
+              <div style={{paddingLeft: "10px"}}>100</div>
+            </div>
+            <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: "1"}}><b>Total borrowing for all issues</b></div>
+              <div style={{paddingLeft: "10px"}}>20</div>
+            </div>
+            <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: "1"}}><b>Borrowing for this issue</b></div>
+              <div style={{paddingLeft: "10px"}}>5</div>
+            </div>
+            <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: "1"}}><b>Total repayments for all issue</b></div>
+              <div style={{paddingLeft: "10px"}}>30</div>
+            </div>
+            <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: 1}}><b>Repayment of this issue</b></div>
+              <div style={{paddingLeft: "10px"}}>10</div>
+            </div>
+            <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: 1}}><b>Number of issues defaulted</b></div>
+              <div style={{paddingLeft: "10px", }}>90000000000</div>
+            </div>
+            <div style={{paddingTop: "10px"}} className="buttons-container">
+                  <button className="button-cancel button--large button--supply" onClick={() => setShowIssuerDetails(false)}>
+                    Close
+                  </button>
+                </div>
+          </div>
       )}
       </div>
 

@@ -3,6 +3,7 @@ const TableData = [
     
     {
       "Asset": "Asset 1",
+      "Issuer": "Moses Adeolu",
       "Collateral": "Collateral 1",
       "APY": "5%",
       "Currency": "USD",
@@ -10,12 +11,12 @@ const TableData = [
       "Issuing Docs": "Document 1",
       "Collateral Posted": "Yes",
       "Status": "Active",
-      "Action1": "Provide Collateral", 
-      "Action2": "Liquidate Collateral"
+      "Action": "", 
     },
 
     {
       "Asset": "Asset 2",
+      "Issuer": "Moses Adeolu",
       "Collateral": "Collateral 2",
       "APY": "3%",
       "Currency": "INR",
@@ -23,8 +24,7 @@ const TableData = [
       "Issuing Docs": "Document 2",
       "Collateral Posted": "Yes",
       "Status": "Active",
-      "Action1": "Provide Collateral", 
-      "Action2": "Liquidate Collateral"
+      "Action": "", 
     },
 
 ];

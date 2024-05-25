@@ -1,6 +1,6 @@
 import '../styles/main.scss';
 import { CircleCheckmark } from './Icons/CircleCheckmark';
-import { BrowserRouter , Routes, Route } from 'react-router-dom';
+import { BrowserRouter , Routes, Route, Link, useLocation } from 'react-router-dom';
 import Issuer from './issuer';
 import Providers from './provider';
 import { useWeb3Modal } from "@web3modal/wagmi/react";
@@ -10,10 +10,10 @@ import {
 } from "wagmi";
 import Web3 from 'web3';
 import { providers } from 'ethers';
+import { useState } from 'react';
 
 
 export function App() {
-
   const { open } = useWeb3Modal();
   const { address, isConnected, chainId, isConnecting } = useAccount();
   const account = address;
@@ -37,6 +37,22 @@ export function App() {
     const provider = new providers.Web3Provider(transport, network);
     signer = provider.getSigner(address)
   }
+  const [page, setPage] = useState<string>("")
+
+  // console.log("page: ", page)
+
+  //handle dropdown out of focus click behaviour
+  window.onclick = (event:any) => {
+    if (event.target.id !== "dropdown-button") {
+      const dropdowns = document.getElementsByClassName("dropdown-content");
+      for (let i = 0; i < dropdowns.length; i++) {
+        const openDropdown = dropdowns[i];
+        if (openDropdown.classList.contains("show-dropdown")) {
+          openDropdown.classList.remove("show-dropdown");
+        }
+      }
+    }
+  }
 
 
   return (
@@ -45,6 +61,20 @@ export function App() {
       <div className="container">
         <div className="masthead L1">
           <h1 className="L0 heading heading--emphasized">Verified RWA Markets</h1>
+          {account && page === "/" && (
+            <Link to="/issue">
+            <button className="button button--large button--supply" 
+              style={{width: "fit-content", position: "absolute", top: "10px", right: "130px"}} 
+              >Borrow</button>
+          </Link>
+          )}
+          {account && page === "/issue" && (
+            <Link to="/">
+            <button className="button button--large button--supply" 
+              style={{width: "fit-content", position: "absolute", top: "10px", right: "130px"}} 
+              >Lend</button>
+          </Link>
+          )}
           { !account ?
             <button className="button button--large button--supply" 
             style={{width: "fit-content", position: "absolute", top: "10px", right: "10px"}} 
@@ -59,8 +89,8 @@ export function App() {
       
       <Routes>
      
-      <Route path="/" element={<Providers web3={web3} account={account} chainId={chainId} signer={signer} />}> </Route>
-        <Route path="/issue" element={<Issuer web3={web3} account={account} chainId={chainId} signer={signer} />}> </Route>
+      <Route path="/" element={<Providers web3={web3} account={account} chainId={chainId} signer={signer} page={page} setPage={setPage}/>}> </Route>
+        <Route path="/issue" element={<Issuer web3={web3} account={account} chainId={chainId} signer={signer} page={page} setPage={setPage}/>}> </Route>
 
       </Routes>
       
