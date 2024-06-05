@@ -30,6 +30,10 @@ export const subgraphConfig: any = {
         subgraphUrl: ""
     },
 
+    137: {
+        subgraphUrl: ""
+    },
+
     11155111: {
         subgraphUrl: "https://api.thegraph.com/subgraphs/name/verified-network/wallet/",
         explorerUrl: "https://sepolia.etherscan.io/"
