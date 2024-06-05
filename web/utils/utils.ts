@@ -1,31 +1,72 @@
 import axios from "axios";
+import { TableRow } from "../provider";
+import { ERC20 } from "@verified-network/verified-sdk";
+import { resolve } from "path";
+import { promises } from "dns";
 
 const pinataJwt = import.meta.env.VITE_APP_PINATA_JWT;
 
-export const fetchRwas = async (subgraphUrl: string) => {
+export const fetchTokens = async (subgraphUrl: string, web3: any, signer: any) => {
   const query = `query {
-    rwas{
+    tokens{
       id
-      issuer{
+      token
+      tokenName 
+      tokenType
+      bondIssues{
         id
-        name
-        accountid
+        token{
+          id
+          token
+          tokenName
+          tokenType
+        }
+        bondName
+        issuedAmount
+        collateralCurrency
+        collateralAmount
+        issueTime   
       }
-      asset{
+      bondPurchases{
         id
-        security
-        productCategory
-        currency
+        token{
+          id
+          token
+          tokenName
+          tokenType
+        }
+        bondName
+        purchaseValue
+        paidInCurrency
+        purchasedAmount 
+        purchaseTime
       }
-      bond{
+      bondRedemptions{
         id
-        token
-        tokenName
-        tokenType
+        token{
+          id
+          token
+          tokenName
+          tokenType
+        }
+        bondName
+        redeemedValue
+        redemptionCurrency
+        redemptionAmount 
       }
-      apy
-      issuingDocs
-      faceValue
+      bondLiquidations{
+        id
+        token{
+          id
+          token
+          tokenName
+          tokenType
+        }
+        liquidatedValue
+        bondName
+        liquidationCurrency
+        liquidatedAmount  
+      }
     }
   }`;
   return await axios({
@@ -37,16 +78,48 @@ export const fetchRwas = async (subgraphUrl: string) => {
   })
     .then((res: any) => {
       if (res.data.errors) {
-        console.error("error while fetching RWAs: ", res.data.errors)
-        return [];
+        console.error("error while fetching Tokens: ", res.data.errors)
+        return []
       } else {
-        return res.data.data.rwas;
+        const allTokens = res.data.data.tokens;
+        let data: any[] = [];
+        allTokens.map(async(tokens: any) => {
+          tokens.bondIssues.map(async (bond: any) => {
+            // console.log("tokens: ", tokens, "bonds: ", bond)
+            data.push({
+              "Asset": web3.utils.hexToAscii(bond.bondName.toString()).replace(/\0/g, ""),
+              "Issuer": bond.issuer? web3.utils.hexToAscii(bond.issuer.name.toString()).replace(/\0/g, ""): "",
+              "Collateral": web3.utils.hexToAscii(bond.collateralCurrency.toString()).replace(/\0/g, ""),
+              "CollateralAddress": bond.collateralCurrency?.id ? bond.collateralCurrency.id.toString() : "0xE4aB69C077896252FAFBD49EFD26B5D171A32410", //change when subgraph is fixed
+              "BondTokenAddress": tokens.token.toString(),
+              // "APY": bond.issuedAmount.toString(),
+              'Currency': web3.utils.hexToAscii(bond.bondName.toString()).replace(/\0/g, "").replace("VB", ""),
+              'Face Value': bond.issuedAmount.toString() === "0"?  bond.issuedAmount.toString(): web3.utils.fromWei(bond.issuedAmount.toString(), "ether"),
+              "Issued Value": bond.issuedAmount.toString() === "0"?  bond.issuedAmount.toString(): web3.utils.fromWei(bond.issuedAmount.toString(), "ether"),
+              "Borrowed": tokens.bondPurchases.map((prch: any) =>{ return Number(web3.utils.fromWei(prch.purchasedAmount.toString(), "ether"))}).reduce((a:number , c: number) => {
+                return a + c
+              }, 0),
+              "Sold Value": tokens.bondPurchases.map((prch: any) =>{ return Number(web3.utils.fromWei(prch.purchasedAmount.toString(), "ether"))}).reduce((a:number , c: number) => {
+                return a + c
+              }, 0),
+              // 'Issuing Docs': "",
+              "Collateral Posted": bond.collateralAmount.toString() === "0"?  bond.collateralAmount.toString()
+              : web3.utils.fromWei(bond.collateralAmount.toString(), "ether"),
+              "Status": tokens.bondRedemptions.filter((rmdBond: any) => rmdBond.id.toLowerCase() === bond.id.toLowerCase())?.redemptionAmount == bond.collateralAmount || 
+                tokens.bondLiquidations.filter((lqdBond: any) => lqdBond.id.toLowerCase() === bond.id.toLowerCase())?.liquidatedAmount ==  bond.collateralAmount ? "Inactive" : "Active",
+              "Action": "",
+            })
+          })
+        
+        })
+        return data
       }
+      
     })
     .catch((err: any) => {
-      console.error("error while fetching RWAs: ", err)
-      return null;
-    });
+      console.error("error while fetching Tokens: ", err)
+      return []
+    })
 };
 
 export const fetchCollaterals = async (subgraphUrl: string) => {
@@ -173,10 +246,6 @@ export const fetchUserDetails = async(subgraphUrl: string, userAddress: string) 
         }
         bondName
         issuedAmount 
-        collateralCurrency{
-          id
-          name
-        }
         collateralAmount
         issueTime
       }
@@ -254,8 +323,8 @@ export const pinToIpfs = async (file: File, tokenId: string, chainId: number, se
       );
       return null;
     } 
-    console.log("file pinned to pinata succesfully with hash: ", res.data.ipfsHash);
-    return res.data.ipfsHash;
+    console.log("file pinned to pinata succesfully with hash: ", res.data.IpfsHash);
+    return res.data.IpfsHash;
   } catch (err: any) {
     console.error("Error while pinning file to ipfs: ", err);
     return null;

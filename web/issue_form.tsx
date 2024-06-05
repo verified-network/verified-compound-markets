@@ -29,7 +29,7 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
         console.error(`Bond contract for chain id: ${chainId} does not exist`)
         return;
       }
-      return await collateralContract.approve(bondContractAddresses, parseUnits(faceValue.toString(), collateralDecimals)).then(async() => {
+      return await collateralContract.approve(bondContractAddresses[selectedCurrencyBond], parseUnits(faceValue.toString(), collateralDecimals)).then(async() => {
         //Todo: check contract behaviour to handle toast
         const bondContract = new Bond(signer!, bondContractAddresses[selectedCurrencyBond]);
         return await bondContract.requestIssue(parseUnits(faceValue.toString(), collateralDecimals).toString(), account!, collateralSymbol, collateralAddress);
@@ -48,7 +48,7 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
       return;
     }
     const userDetails = await fetchUserDetails(subgraphConfig[chainId!].subgraphUrl, account!);
-    const bondIssued = userDetails.bondIssues.id; //Todo: confirm if bond is bond id or token{ id}
+    const bondIssued = userDetails.bondIssues[userDetails.bondIssues.length - 1].token.id; //Todo: use event subcriber?
     const operatorContract = new Compound(signer!, compoundAddress);
     const apyOfferedFmt = parseUnits(apyOffered.toString(), collateralDecimals).toString();
     const faceValueFmt = parseUnits(faceValue.toString(), collateralDecimals).toString(); 
@@ -61,7 +61,7 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
       if(
         collateralAddress !== '' && assetAddress !== '' && selectedCurrencyBond !== '' 
         && faceValue !== '' && apyOffered !== '' && issuingDocument
-      ) {
+      ) {    
         const collateralContract = new Contract(collateralAddress, ERC20, signer!);
         const collateralSymbol = await collateralContract.symbol().catch((err: any) =>  {
           //Todo: toast here
@@ -74,17 +74,18 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
           return null
         });
         await handleRequestIssue(collateralContract, collateralSymbol, collateralDecimals).then(async(res: any) => {
-         if(res && res.status === 0 && res.response && res.response.hash) {
-          console.log("Successful RequestIssue transaction with hash: ", res.response.hash)
+         if(res && res.status === 0) {
+          console.log("Successful RequestIssue transaction with hash: ", res.response?.hash)
           //toast here
           //pin issue docs to ipfs(todo: should this be done first??)
           const issueingDocHash = await pinToIpfs(issuingDocument, collateralAddress, chainId!, account!);
           if(issueingDocHash) {
             const issueingDocUrl = `${pinataDedicatedGateway || pinataDefaultGateway}/ipfs/${issueingDocHash}`;
+            console.log("ipfs url: ", issueingDocUrl)
             //call submitNewRWA
             await handleSubmitNewRWA(collateralDecimals, issueingDocUrl).then((_res: any) => {
-              if(_res && _res.status === 0 && _res.response && _res.response.hash) {
-                console.log("Successful SubmitNewRWA transaction with hash: ", _res.response.hash)
+              if(_res && _res.status === 0) {
+                console.log("Successful SubmitNewRWA transaction with hash: ", _res.response?.hash)
                 //toast here
               }else{
                 _res && _res.message ?

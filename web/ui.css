@@ -123,6 +123,27 @@
   text-align: center;
   color: #fff;
 }
+
+.loader-container{
+  position:fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #0d131a9e;
+  z-index: 30;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.asset-url{
+  cursor: pointer;
+  color:#00c189;
+}
+
+
 .b2{
   background-color: aliceblue;
   margin-left: 4%;

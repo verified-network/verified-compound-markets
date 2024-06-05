@@ -11,6 +11,9 @@ import {
 import Web3 from 'web3';
 import { providers } from 'ethers';
 import { useState } from 'react';
+import { Loader } from './utils/loader';
+import { ToastContainer, toast } from 'react-toastify';
+import "react-toastify/dist/ReactToastify.css"
 
 
 export function App() {
@@ -33,11 +36,13 @@ export function App() {
     const provider = new providers.Web3Provider(transport, network);
     signer = provider.getSigner(address)
   }else if(transport) {
-    web3 = new Web3(transport)
+    web3 = new Web3(transport);
     const provider = new providers.Web3Provider(transport, network);
     signer = provider.getSigner(address)
   }
+
   const [page, setPage] = useState<string>("")
+  const [isLoading, setIsLoading] = useState<boolean>(false)
 
   // console.log("page: ", page)
 
@@ -57,6 +62,7 @@ export function App() {
 
   return (
     <BrowserRouter>
+    {isLoading && (<Loader/>)}
     <div className="page home">
       <div className="container">
         <div className="masthead L1">
@@ -86,13 +92,21 @@ export function App() {
         </div>
         
       </div>
-      
       <Routes>
      
-      <Route path="/" element={<Providers web3={web3} account={account} chainId={chainId} signer={signer} page={page} setPage={setPage}/>}> </Route>
-        <Route path="/issue" element={<Issuer web3={web3} account={account} chainId={chainId} signer={signer} page={page} setPage={setPage}/>}> </Route>
+      <Route path="/" element={<Providers web3={web3} account={account} chainId={chainId} signer={signer} page={page} setPage={setPage} setIsLoading={setIsLoading}/>}> </Route>
+        <Route path="/issue" element={<Issuer web3={web3} account={account} chainId={chainId} signer={signer} page={page} setPage={setPage} setIsLoading={setIsLoading}/>}> </Route>
 
       </Routes>
+      <ToastContainer
+      position='top-center'
+      autoClose={3000}
+      hideProgressBar
+      pauseOnHover
+      draggable
+      closeOnClick
+      closeButton={false}
+      />
       
     </div>
     </BrowserRouter>
