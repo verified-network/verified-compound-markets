@@ -1,7 +1,7 @@
-import { resolve } from 'path';
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
+import { resolve } from "path";
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { NodeGlobalsPolyfillPlugin } from "@esbuild-plugins/node-globals-polyfill";
 import nodePolyfills from "rollup-plugin-polyfill-node";
 
 // https://vitejs.dev/config/
@@ -15,17 +15,17 @@ export default defineConfig({
     port: 5183,
   },
   build: {
-    target: ['es2020'],
+    target: ["es2020"],
     rollupOptions: {
       input: {
-        index: resolve(__dirname, 'index.html'),
-        embedded: resolve(__dirname, 'embedded.html'),
+        index: resolve(__dirname, "index.html"),
+        embedded: resolve(__dirname, "embedded.html"),
       },
       plugins: [nodePolyfills()],
     },
   },
-  base: '',
-  publicDir: 'web_public',
+  base: "",
+  publicDir: "web_public",
   experimental: {
     renderBuiltUrl: (filename, { hostType }) => {
       return { relative: true };
@@ -33,25 +33,29 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '/fonts': resolve(__dirname, 'node_modules/compound-styles/public/fonts'),
+      "/fonts": resolve(__dirname, "node_modules/compound-styles/public/fonts"),
       process: "process/browser",
       stream: "stream-browserify",
       zlib: "browserify-zlib",
       util: "util/",
       path: "path-browserify",
-      '@': resolve(__dirname, './src'),    
+      "@": resolve(__dirname, "./src"),
     },
   },
   optimizeDeps: {
     esbuildOptions: {
       // Node.js global to browser globalThis
       define: {
-        global: 'globalThis',
+        global: "globalThis",
+      },
+      supported: {
+        bigint: true,
       },
       // Enable esbuild polyfill plugins
       plugins: [
         NodeGlobalsPolyfillPlugin({
           buffer: true,
+          protocolImports: true,
         }),
       ],
     },

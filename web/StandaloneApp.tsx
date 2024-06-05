@@ -1,38 +1,56 @@
 import './init';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
-import { Web3Provider } from '@ethersproject/providers';
-import { initializeConnector } from '@web3-react/core';
-import { MetaMask } from '@web3-react/metamask';
+import { App } from './App';
+import { http, createConfig } from 'wagmi'
 
-const [metamask, metamaskHooks] = initializeConnector<MetaMask>((actions) => new MetaMask({ actions }));
+import { WagmiProvider } from 'wagmi'
+import { injected } from "wagmi/connectors";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  mainnet,
+  sepolia,
+  polygon,
+  gnosis,
+  base,
+  baseSepolia,
+} from "wagmi/chains";
+import { createWeb3Modal } from "@web3modal/wagmi/react";
+import { wallectConnectId } from './utils/constants';
 
-function StandaloneApp() {
-  const web3 = metamaskHooks.useProvider<Web3Provider>();
 
-  React.useEffect(() => {
-    const checkMetaMask = async () => {
-      try {
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        metamask.activate();
-      } catch (error) {
-        console.error('MetaMask not installed or not connected:', error);
-      }
-    };
+const config = createConfig({
+  chains: [mainnet, sepolia, polygon, gnosis, base, baseSepolia],
+  transports: {
+    [mainnet.id]: http(),
+    [sepolia.id]: http(),
+    [polygon.id]: http(),
+    [gnosis.id]: http(),
+    [base.id]: http(),
+    [baseSepolia.id]: http(),
+  },
+  ssr: true,
+  connectors: [
+    injected({ shimDisconnect: true }),
+  ],
+});
 
-    checkMetaMask();
-  }, []);
+createWeb3Modal({
+  wagmiConfig: config,
+  projectId: wallectConnectId,
+  enableAnalytics: true,
+  enableOnramp: true,
+  // allWallets: "ONLY_MOBILE",
+});
 
-  if (web3) {
-    return <App web3={web3 as any} />;
-  } else {
-    return <div>Connecting...</div>;
-  }
-}
+const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <StandaloneApp />
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+      <App />
+      </QueryClientProvider>
+    </WagmiProvider>
   </React.StrictMode>
 );

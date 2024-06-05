@@ -1,39 +1,21 @@
+// @ts-ignore
 import React, { useState } from 'react';
-import './form.css';
-import { ethers } from 'ethers';
-import VerifiedContractAddress from '@verified-network/verified-sdk/dist/contractAddress'
-import { Bond, Compound } from '@verified-network/verified-sdk';
-import axios from 'axios';
+import './issue_form.css';
+import { CurrenciesToBondMapping, ComponentDefaultprops, pinataDedicatedGateway, pinataDefaultGateway, subgraphConfig } from './utils/constants';
+import { Bond, Compound, contractAddress} from '@verified-network/verified-sdk';
+import { Contract } from '@ethersproject/contracts';
+import {parseUnits} from '@ethersproject/units'
 import ERC20 from '../abis/ERC20';
-import Box from '@mui/material/Box';
-import Stepper from '@mui/material/Stepper';
-import Step from '@mui/material/Step';
-import StepLabel from '@mui/material/StepLabel';
-import Typography from '@mui/material/Typography';
-import InputLabel from '@mui/material/InputLabel';
-import MenuItem from '@mui/material/MenuItem';
-import FormControl from '@mui/material/FormControl';
-import Select, { SelectChangeEvent } from '@mui/material/Select';
+import { fetchUserDetails, pinToIpfs } from './utils/utils';
 
-// Define available currency options
-const CurrencyOptions = ['USD', 'EUR', 'GBP', 'INR']; // Add more currency options as needed
 
-// Retrieve Pinata API keys from environment variables
-const pinataApiKey = import.meta.env.VITE_APP_PINANA_API_KEY;
-const pinataSecretKey = import.meta.env.VITE_APP_PINANA_API_SECRET;
 
-// Define the steps for the Stepper component
-const steps = ['Issue New RWA', 'Submit New RWA'];
-
-// AssetIssuanceForm component
-const AssetIssuanceForm: React.FC = function () {
-  // State variables to manage form input and component state
+const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, account, signer}) => {
   const [assetAddress, setAssetAddress] = useState('');
   const [collateralAddress, setCollateralAddress] = useState('');
   const [faceValue, setFaceValue] = useState<number | ''>('');
   const [apyOffered, setApyOffered] = useState<number | ''>('');
-  const [selectedCurrency, setSelectedCurrency] = useState('');
-  const [issuingDocumentIPFSURL, setIssuingDocumentIPFSURL] = useState(``)
+  const [selectedCurrencyBond, setSelectedCurrencyBond] = useState<string>('');
   const [issuingDocument, setIssuingDocument] = useState<File | null>(null);
   const [activeStep, setActiveStep] = React.useState(0);
   const [RWAList, setRWAList] = React.useState([]);
@@ -55,306 +37,178 @@ const AssetIssuanceForm: React.FC = function () {
     setIssuingDocument(file);
   }
 
-  // Function to upload file to IPFS
-  const uploadingFileToIPFS = async (data: File) => {
-    const formData = new FormData()
-    formData.append('file', data)
-    try {
-      const resFile = await axios({
-        method: "post",
-        url: "https://api.pinata.cloud/pinning/pinFileToIPFS",
-        data: formData,
-        headers: {
-          'pinata_api_key': `${pinataApiKey}`,
-          'pinata_secret_api_key': `${pinataSecretKey}`,
-          "Content-Type": "multipart/form-data"
-        },
+  let chainContractAddresses: any = contractAddress;
+  chainContractAddresses = chainContractAddresses[chainId!]
+
+
+  const handleRequestIssue = async(collateralContract: any, collateralSymbol: string, collateralDecimals: number) => {
+    if(collateralContract && collateralSymbol && collateralDecimals) {
+      const bondContractAddresses = chainContractAddresses["BOND"];
+      if (!bondContractAddresses) {
+        console.error(`Bond contract for chain id: ${chainId} does not exist`)
+        return;
+      }
+      return await collateralContract.approve(bondContractAddresses[selectedCurrencyBond], parseUnits(faceValue.toString(), collateralDecimals)).then(async() => {
+        //Todo: check contract behaviour to handle toast
+        const bondContract = new Bond(signer!, bondContractAddresses[selectedCurrencyBond]);
+        return await bondContract.requestIssue(parseUnits(faceValue.toString(), collateralDecimals).toString(), account!, collateralSymbol, collateralAddress);
+      }).catch((err: any) => {
+        console.error("Approval transaction failed with error: ", err);
+        //Toast here
+        return;
       });
-      setIssuingDocumentIPFSURL(`https://ipfs.io/ipfs/${resFile.data.IpfsHash}`);
-    } catch (error) {
-      console.log(error)
     }
   }
 
-  // Function to handle form submission
-  const handleSubmit = async () => {
-    // Handle form submission here
-    if (!assetAddress || !collateralAddress || !faceValue || !apyOffered || !selectedCurrency || !issuingDocument) {
+  const handleSubmitNewRWA = async(collateralDecimals: number, issueingDocUrl: string) => {
+    const compoundAddress = chainContractAddresses["Compound"];
+    if(!compoundAddress) {
+      console.error(`Compound/operator contract for chain id: ${chainId} does not exist`)
       return;
     }
+    const userDetails = await fetchUserDetails(subgraphConfig[chainId!].subgraphUrl, account!);
+    const bondIssued = userDetails.bondIssues[userDetails.bondIssues.length - 1].token.id; //Todo: use event subcriber?
+    const operatorContract = new Compound(signer!, compoundAddress);
+    const apyOfferedFmt = parseUnits(apyOffered.toString(), collateralDecimals).toString();
+    const faceValueFmt = parseUnits(faceValue.toString(), collateralDecimals).toString(); 
+    return await operatorContract.submitNewRWA(assetAddress!, bondIssued, apyOfferedFmt, issueingDocUrl, faceValueFmt)
+  }
 
-	await uploadingFileToIPFS(issuingDocument);
-
-    try {
-      // Connect to MetaMask
-      if (window.ethereum) {
-        console.log('MetaMask detected...');
-
-        // Request accounts using ethereum.request
-        await (window.ethereum as any).request({ method: 'eth_requestAccounts' });
-
-        // Create a Web3 provider using MetaMask
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        
-        // Get the current network information
-        const network = await provider.getNetwork();
-        const networkId = network.chainId;
-
-        // Retrieve contract addresses based on the network
-        const ContractAddresses = await VerifiedContractAddress;
-        const networkContractAddresses = ContractAddresses[networkId];
-        
-        // Determine the selected currency contract key
-        const selectedCurrencyContractKey = selectedCurrency === 'USD' ? 'VBUSD' :
-          selectedCurrency === 'EUR' ? 'VBEUR' :
-          selectedCurrency === 'INR' ? 'VBINR' : 'VCCHF';
-
-        // Get the bond contract address for the selected currency
-        const bondContractAddress = networkContractAddresses?.BOND?.[selectedCurrencyContractKey];
-        if (!bondContractAddress) {
-          console.error(`Bond contract address not found for network ID: ${networkId}`);
-          return;
-        }
-
-        // Get the verified contract address
-        const verifiedContractAddress = networkContractAddresses?.Compound;
-
-        // Check if the verified contract address is available
-        if (verifiedContractAddress) {
-          // Create a signer using the MetaMask provider
-          const signer = provider.getSigner();
+  const handleSubmit = async(event: React.FormEvent) => {
+    event.preventDefault();
+    if(chainId && account && signer) {
+      if(
+        collateralAddress !== '' && assetAddress !== '' && selectedCurrencyBond !== '' 
+        && faceValue !== '' && apyOffered !== '' && issuingDocument
+      ) {    
+        const collateralContract = new Contract(collateralAddress, ERC20, signer!);
+        const collateralSymbol = await collateralContract.symbol().catch((err: any) =>  {
+          //Todo: toast here
+          console.error("Error  while getting provided collateral symbol: ", err)
+          return null
+        });
+        const collateralDecimals = await collateralContract.decimals().catch((err: any) =>  {
+          //Todo: toast here
+          console.error("Error  while getting provided collateral decimals: ", err)
+          return null
+        });
+        await handleRequestIssue(collateralContract, collateralSymbol, collateralDecimals).then(async(res: any) => {
+         if(res && res.status === 0) {
+          console.log("Successful RequestIssue transaction with hash: ", res.response?.hash)
+          //toast here
+          //pin issue docs to ipfs(todo: should this be done first??)
+          const issueingDocHash = await pinToIpfs(issuingDocument, collateralAddress, chainId!, account!);
+          if(issueingDocHash) {
+            const issueingDocUrl = `${pinataDedicatedGateway || pinataDefaultGateway}/ipfs/${issueingDocHash}`;
+            console.log("ipfs url: ", issueingDocUrl)
+            //call submitNewRWA
+            await handleSubmitNewRWA(collateralDecimals, issueingDocUrl).then((_res: any) => {
+              if(_res && _res.status === 0) {
+                console.log("Successful SubmitNewRWA transaction with hash: ", _res.response?.hash)
+                //toast here
+              }else{
+                _res && _res.message ?
+                console.error("Error from SubmitNewRWA: ", _res.message)
+                //Todo: toast here
+                : console.error("Error from SubmitNewRWA: Transaction Failed")
+                //Todo: toast here
+                
+               }
+            });
+          }
+         }else{
+          res && res.message ?
+          console.error("Error from request Issue: ", res.message)
+          //Todo: toast here
+          : console.error("Error from request Issue: Transaction Failed")
+          //Todo: toast here
           
-          // Create instances of the Bond and Compound contracts
-          const bondContract = new Bond(signer, bondContractAddress);
-          const verifiedMarketsContract = new Compound(signer, verifiedContractAddress);
-
-          // Get the signer's address
-          const signerAddress = await signer.getAddress();
-
-          // Create a contract instance for the collateral token
-          const collateralTokenContract = new ethers.Contract(collateralAddress, ERC20, signer);
-          const collateralTokenDecimals = await collateralTokenContract.decimals();
-          const collateralTokenSymbol = await collateralTokenContract.symbol();
-
-          // Step 1: Issue New RWA
-          if (activeStep === 0) {
-            // Approve the transfer of collateral tokens to the bond contract
-            const approvalTransaction = await collateralTokenContract.approve(bondContractAddress, ethers.utils.parseUnits(faceValue.toString(), collateralTokenDecimals));
-            await approvalTransaction.wait();
-            console.log('Tokens approved successfully.');
-
-            // Request the issuance of a new bond
-            const issueTransaction = await bondContract.requestIssue(
-              ethers.utils.parseUnits(faceValue.toString(), collateralTokenDecimals),
-              signerAddress,
-              collateralTokenSymbol,
-              collateralAddress
-            );
-
-            console.log('Form submitted successfully');
-            
-            // Fetch and display updated RWA list
-            const result = await fetch(`https://api.thegraph.com/subgraphs/name/verified-network/payments`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                query: `{
-                  users(where: {bondIssues_: {id_gt: "0"}}) {
-                    accountid
-                    bondIssues(orderBy: issueTime, orderDirection: desc) {
-                      bondName
-                      id
-                      issueTime
-                      issuedAmount
-                      collateralAmount
-                    }
-                    id
-                  }
-                }`
-              }),
-            }).then((res) => res.json());
-            setRWAList(result?.data?.users[0]?.bondIssues);
-            console.log(result?.data?.users[0].bondIssues);
-          }
-
-          // Step 2: Submit New RWA
-          if (activeStep === 1) {
-            // Convert APY and face value to BigNumber with correct decimal places
-            const _apy = ethers.utils.parseUnits((apyOffered / 100).toString(), collateralTokenDecimals);
-            const _faceValue = ethers.utils.parseUnits((faceValue / 100).toString(), collateralTokenDecimals);
-
-            // Submit the new RWA
-            console.log('Calling submitNewRWA function...', assetAddress, collateralAddress, _apy, issuingDocumentIPFSURL, _faceValue);
-            const submitNewRWATransaction = await verifiedMarketsContract.submitNewRWA(assetAddress, collateralAddress, _apy, issuingDocumentIPFSURL, _faceValue, { gasLimit: 300000 })
-          }
-
-          // Move to the next step in the Stepper
-          setActiveStep((prevActiveStep) => prevActiveStep + 1);
-        } else {
-          throw new Error('MetaMask not detected');
-        }
+         }
+        });
       }
-    } catch (error) {
-      console.error('Error submitting transaction:', error);
+    }else{
+      console.error("No Wallet found. Connect wallet and try again")
+      //Todo: Toast here
     }
   };
-
-  // Function to handle RWA selection change
-  const handleChangeRWA = (event: SelectChangeEvent) => {
-    setSelectedRWA(event.target.value as string);
-  };
+  
 
   return (
     <div className='main'>
       <h4>Asset Issuance Form</h4>
-      <Box sx={{ width: '100%' }}>
-        {/* Stepper component to display current step in the form */}
-        <Stepper activeStep={activeStep}>
-          {steps.map((label, index) => {
-            const stepProps: { completed?: boolean } = {};
-            const labelProps: {
-              optional?: React.ReactNode;
-            } = {};
-            return (
-              <Step key={label} {...stepProps}>
-                <StepLabel className='step-label--white' {...labelProps}>{label}</StepLabel>
-              </Step>
-            );
-          })}
-        </Stepper>
-        {/* Display form or completion message based on the current step */}
-        {activeStep === steps.length ? (
-          <>
-            <Typography sx={{ mt: 2, mb: 1 }}>
-              All steps completed - you&apos;re finished
-            </Typography>
-            {/* Additional action button for navigating to more steps */}
-            <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
-              <Box sx={{ flex: '1 1 auto' }} />
-              <button className='button--large button--supply' onClick={handleMore}>More</button>
-            </Box>
-          </>
-        ) : (
-          <>
-            {/* Display form fields based on the current step */}
-            <Typography sx={{ mt: 2, mb: 1 }}>
-              {activeStep === 0 && (
-                <div className='main2'>
-                  {/* Form for entering details for the first step */}
-                  <form>
-                    {/* Asset Address input field */}
-                    <div className='form-field'>
-                      <label>Asset Address</label>
-                      <input
-                        type='text'
-                        value={assetAddress}
-                        onChange={(e) => setAssetAddress(e.target.value)}
-                        required
-                      />
-                    </div>
+      <div className='main2'>
+        <form onSubmit={handleSubmit}>
+          <div className='form-field'>
+            <label>Asset Address</label>
+            <input
+              type='text'
+              value={assetAddress}
+              onChange={(e) => setAssetAddress(e.target.value)}
+              required
+            />
+          </div>
 
-                    {/* Collateral Address input field */}
-                    <div className='form-field'>
-                      <label>Collateral Address</label>
-                      <input
-                        type='text'
-                        value={collateralAddress}
-                        onChange={(e) => setCollateralAddress(e.target.value)}
-                        required
-                      />
-                    </div>
+          <div className='form-field'>
+            <label>Collateral Address</label>
+            <input
+              type='text'
+              value={collateralAddress}
+              onChange={(e) => setCollateralAddress(e.target.value)}
+              required
+            />
+          </div>
 
-                    {/* Face Value input field */}
-                    <div className='form-field'>
-                      <label>Face Value of Asset to Issue</label>
-                      <input
-                        type='number'
-                        value={faceValue}
-                        onChange={(e) => setFaceValue(e.target.valueAsNumber)}
-                        required
-                      />
-                    </div>
+          <div className='form-field'>
+            <label>Face Value of Asset to Issue</label>
+            <input
+              type='number'
+              value={faceValue}
+              onChange={(e) => setFaceValue(e.target.valueAsNumber)}
+              required
+            />
+          </div>
 
-                    {/* APY Offered input field */}
-                    <div className='form-field'>
-                      <label>APY Offered</label>
-                      <input
-                        type='number'
-                        value={apyOffered}
-                        onChange={(e) => setApyOffered(e.target.valueAsNumber)}
-                        required
-                      />
-                    </div>
+          <div className='form-field'>
+            <label>APY Offered</label>
+            <input
+              type='number'
+              value={apyOffered}
+              onChange={(e) => setApyOffered(e.target.valueAsNumber)}
+              required
+            />
+          </div>
 
-                    {/* Currency selection field */}
-                    <div className='form-field'>
-                      <label>APY Offered for Currency</label>
-                      <select
-                        value={selectedCurrency}
-                        onChange={(e) => setSelectedCurrency(e.target.value)}
-                        required
-                      >
-                        <option value='' disabled>
-                          Select Currency
-                        </option>
-                        {/* Map currency options to dropdown options */}
-                        {CurrencyOptions.map((currency) => (
-                          <option key={currency} value={currency}>
-                            {currency}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+          <div className='form-field'>
+            <label>APY Offered for Currency</label>
+            <select
+              value={selectedCurrencyBond}
+              onChange={(e) => setSelectedCurrencyBond(CurrenciesToBondMapping[e.target.value])}
+              required
+            >
+              <option value='' disabled>
+                Select Currency
+              </option>
+              {Object.keys(CurrenciesToBondMapping).map((currency: string) => (
+                <option key={currency} value={currency}>
+                  {currency}
+                </option>
+              ))}
+            </select>
+          </div>
 
-                    {/* Issuing Document file input field */}
-                    <div className='form-field'>
-                      <label>Issuing Document</label>
-                      <input
-                        type='file'
-                        onChange={handleChangeFile}
-                        required
-                      />
-                    </div>
-                  </form>
-                </div>
-              )}
-              {/* RWA selection field for the second step */}
-              {activeStep === 1 && <FormControl sx={{marginTop: '30px'}} fullWidth>
-                <InputLabel id="demo-simple-select-label">RWA</InputLabel>
-                <Select
-                  labelId="demo-simple-select-label"
-                  id="demo-simple-select"
-                  value={selectedRWA}
-                  label="RWA"
-                  sx={{color:'white'}}
-                  onChange={handleChangeRWA}
-                >
-                  {/* Map RWA options to dropdown options */}
-                  {RWAList.map((rwa: any, index: number) => {
-                    return <MenuItem key={index} value={rwa?.id}>{ethers.utils.parseBytes32String(rwa?.bondName)}</MenuItem>;
-                  })}
-                </Select>
-              </FormControl>}
-            </Typography>
-            {/* Navigation buttons for moving between steps */}
-            <Box sx={{ display: 'flex', flexDirection: 'row' }}>
-              {/* Back button for navigating to the previous step */}
-              <button
-                disabled={activeStep === 0}
-                className='button--back'
-                onClick={handleBack}
-              >
-                Back
-              </button>
-              <Box sx={{ flex: '1 1 auto' }} />
-              {/* Next/Finish button for proceeding to the next step or completing the form */}
-              <button className='button--large button--supply' onClick={handleSubmit}>
-                {activeStep === steps.length - 1 ? 'Finish' : 'Next'}
-              </button>
-            </Box>
-          </>
-        )}
-      </Box>
+          <div className='form-field'>
+            <label>Issuing Document</label>
+            <input
+              type='file'
+              onChange={(e) => setIssuingDocument(e.target.files?.[0] || null)}
+              required
+            />
+             <label style={{paddingLeft: "1rem"}}>{issuingDocument?.name}</label>
+          </div>
+
+          <button className ='button button--large button--supply'>Submit</button>
+        </form>
+      </div>
     </div>
   );
 };
