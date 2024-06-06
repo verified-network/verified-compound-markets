@@ -9,6 +9,7 @@ import { Contract } from 'ethers';
 import {parseUnits} from '@ethersproject/units'
 import ERC20Abi from '../abis/ERC20';
 import { fetchTokens, fetchUserDetails } from './utils/utils';
+import { toast } from 'react-toastify';
 
 interface TableRow {
   "Asset": string;
@@ -30,6 +31,8 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
   const [enteredNumber, setEnteredNumber] = useState<number | ''>('');
   const [data, setData] = useState<any>([]);
   const [issuerBondIndex, setIsuuerBondIndex] = useState<null | string>(null);
+  const [selectedCollateral, setSelectedCollateral] = useState<string>("");
+  const [collateralName, setCollateralName] = useState<string>("");
 
   let chainContractAddresses: any = contractAddress;
   chainContractAddresses = chainContractAddresses[chainId!]
@@ -147,28 +150,36 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
   };
 
   const postCollateral = async (assest: string, collateral: string, compoundAddress: string) => {
-    const collateralContract = new Contract(collateral, ERC20Abi, signer!); //todo: verify if collateral or assest is to be used
-    const collateralDecimals = await collateralContract.decimals().catch((err: any) =>  {
-      //Todo: toast here
-      console.error("Error  while getting provided collateral decimals: ", err)
-      return 0
-    });
-    const compoundContract = new Compound(signer!, compoundAddress);
-    return await compoundContract.postCollateral(assest, collateral, parseUnits(enteredNumber.toString(), collateralDecimals).toString());
+    const collateralContract = new ERC20(signer!, collateral);
+    const collateralDecimals = await collateralContract.decimals().then((res: any) => {return Number(res?.response?.result)
+    })
+    //Too: is approve neccessary and what spender ???
+    await collateralContract.approve(compoundAddress, parseUnits(enteredNumber.toString(), collateralDecimals).toString()).then(async(res: any) => {
+      if(res?.status === 0) {
+        toast.success("Approve Transaction Successful")
+        const compoundContract = new Compound(signer!, compoundAddress);
+        return await compoundContract.postCollateral(assest, collateral, parseUnits(enteredNumber.toString(), collateralDecimals).toString());
+      }else{
+        res && res.message ?
+        console.error("Error from approve transaction: ", res.message)
+        //Todo: toast here
+        : console.error("Error from approve: Transaction Failed")
+        //Todo: toast here
+        toast.error("Approve Transaction Failed")
+      }
+    })
   }
 
-  const borrowBase = async (base: string, compoundAddress: string) => {
+  const borrowBase = async (baseToken: string, compoundAddress: string) => {
     if(enteredNumber === '') {
       return null;
     }
-    const baseContract = new Contract(base, ERC20Abi, signer!); 
-    const baseDecimals= await baseContract.decimals().catch((err: any) =>  {
-      //Todo: toast here
-      console.error("Error  while getting provided base decimals: ", err)
-      return 0
-    });
+    const baseContract = new ERC20(signer!, baseToken) 
+    const baseDecimals= await baseContract.decimals().then((res: any) => {
+      return Number(res?.response?.result)
+    })
     const compoundContract = new Compound(signer!, compoundAddress);
-    return await compoundContract.borrowBase(base, parseUnits(enteredNumber.toString(), baseDecimals).toString());
+    return await compoundContract.borrowBase(baseToken, parseUnits(enteredNumber.toString(), baseDecimals).toString());
   }
  
 
@@ -186,24 +197,25 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
         if(!compoundAddress) {
           console.error(`Compound/operator contract for chain id: ${chainId} does not exist`)
         }else{
-          const assest = '' //todo: update assest
-          const collateral = '' //todo: update collateral
+          const bondIndex = popupAction.split("-")[1];
+          const collateral = selectedCollateral;
+          const assest = data[bondIndex].BondTokenAddress;
           await postCollateral(assest, collateral, compoundAddress).then(async(res: any) => {
             if(res && res.status === 0 && res.response && res.response.hash) {
               console.log("Successful postCollateral transaction with hash: ", res.response.hash)
-              //toast here
-              const base = '' //Todo update base
+              toast.success("Collateral Posted Succesfully")
+              const base = subgraphConfig[chainId!].baseToken 
               await borrowBase(base, compoundAddress).then((_res: any) => {
                 if(_res && _res.status === 0 && _res.response && _res.response.hash) {
                   console.log("Successful borrow base transaction with hash: ", _res.response.hash)
-                  //toast here
+                  toast.success("Borrow Transaction Succesful")
                 }else{
                   _res && _res.message ?
                   console.error("Error from borrow base: ", _res.message)
                   //Todo: toast here
                   : console.error("Error from borrow base: Transaction Failed")
                   //Todo: toast here
-                  
+                  toast.error("Post Collateral Transaction Failed")
                  }
               })
             }else{
@@ -212,6 +224,7 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
             //Todo: toast here
             : console.error("Error from post collateral: Transaction Failed")
             //Todo: toast here
+            toast.error("Borrow Transaction Failed")
             }
           })
         }
@@ -220,14 +233,13 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
       //handle redeem collateral
       if(popupAction.startsWith("Redeem Collateral")) {
         const bondIndex = popupAction.split("-")[1];
-        const collateralAddress = data[bondIndex].CollateralAddress;
+        const collateralAddress = selectedCollateral
         const bondTokenAddress = data[bondIndex].BondTokenAddress;
         const asset = data[bondIndex].Asset;
         if(collateralAddress && bondTokenAddress) {
           const collateralContract = new ERC20(signer!, collateralAddress);
           const bondTokenContract = new Token(signer!, bondTokenAddress);
-          // const tokenDecimals = await tokenContract.decimals().then((res: any) => {return res.response.result});
-          const collateraldecimals = await collateralContract.decimals().then((res: any) => {return Number(res.response.result)}); //todo: change this when sdk includes decimals in token functions
+          const collateraldecimals = await collateralContract.decimals().then((res: any) => {return Number(res?.response?.result)}); //todo: change this when sdk includes decimals in token functions
           const payer = account!;
           const collateralName =  data[bondIndex].Collateral;
           await collateralContract.approve(chainContractAddresses["BOND"][asset], parseUnits(enteredNumber.toString(), collateraldecimals).toString()).then(async(res: any) => {
@@ -268,13 +280,11 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
           console.error(`Compound/operator contract for chain id: ${chainId} does not exist`)
         }else{
           const compoundContract = new Compound(signer!, compoundAddress);
-          const base = '' //todo: update base
-          const baseContract = new Contract(base, ERC20Abi, signer!); 
-          const baseDecimals= await baseContract.decimals().catch((err: any) =>  {
-            //Todo: toast here
-            console.error("Error  while getting provided base decimals: ", err)
-            return 0
-          });
+          const base = subgraphConfig[chainId!].baseToken
+          const baseContract = new ERC20(signer!, base); 
+          const baseDecimals= await baseContract.decimals().then((res: any) => {return Number(res?.response?.result)
+          })
+          //Todo: is appove neccesary?
           await compoundContract.repayBase(base, parseUnits(enteredNumber.toString(), baseDecimals).toString()).then((res: any) => {
             if(res && res.status === 0 && res.response && res.response.hash) {
               console.log("Successful repayBase transaction with hash: ", res.response.hash)
@@ -294,6 +304,7 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
       setShowPopup(false);
       setPopupAction('');
       setEnteredNumber('');
+      setCollateralName("")
       setIsLoading(false)
     }
     
@@ -362,17 +373,44 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
 
         {showPopup && (
         <div className="popup">
+          {!popupAction.startsWith("Repay Loan") && (
+            <>
+            <h3>Select Collateral:</h3>
+          <select
+              value={collateralName}
+              onChange={(e) => {
+                const collateral = subgraphConfig[chainId!].acceptedCollaterals[e.target.value];
+                setSelectedCollateral(collateral.address)
+                setCollateralName(e.target.value)
+              }}
+              required
+            >
+              <option value='' disabled>
+                Select Collateral
+              </option>
+              {Object.keys(subgraphConfig[chainId!].acceptedCollaterals).map((coltr: string) => (
+                <option key={coltr} value={coltr}>
+                  {coltr}
+                </option>
+              ))}
+            </select>
+            </>
+          )}
           <h3>Enter a number:</h3>
           <input
             type="number"
             value={enteredNumber !== null ? enteredNumber : ''}
             onChange={(e: any) => setEnteredNumber(e.target.value)}
+            placeholder={collateralName.length > 0? collateralName + " " + "Amount" : "Amount"}
           />
           <div className="buttons-container">
             <button className="button-submit button--large button--supply" onClick={handlePopupSubmit}>
               Submit
             </button>
-            <button className="button-cancel button--large button--supply" onClick={() => setShowPopup(false)}>
+            <button className="button-cancel button--large button--supply" onClick={() => {
+              setShowPopup(false)
+              setCollateralName("")
+            }}>
               Cancel
             </button>
           </div>
@@ -423,79 +461,11 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
                 </div>
           </div>
       )}
-        {showIssuanceForm && <AssetIssuanceForm web3={web3}  chainId={chainId}  account={account} signer={signer}/>}
-        {showModal && <Modal onClose={closeModal} web3={web3}  chainId={chainId}  account={account} signer={signer} />}
+        {showIssuanceForm && <AssetIssuanceForm web3={web3}  chainId={chainId}  account={account} signer={signer} setIsLoading={setIsLoading}/>}
+        {showModal && <Modal onClose={closeModal} web3={web3}  chainId={chainId}  account={account} signer={signer} setIsLoading={setIsLoading} />}
       </div>
 
   );
 }
 
-				</div>
-			</div>
-
-			<div className="home__sidebar">
-				<div className="position-card__summary">
-					<div className="panel position-card L3">
-						<div className="panel__header-row">
-
-							<label className="L1 label text-color--1">Summary</label>
-						</div>
-						<div className="panel__header-row">
-							<p className="text-color--1">
-								Verified RWA Markets allows asset managers of real world assets to sell them for collateral that can
-								be used to borrow liquid digital assets, and for users to buy staked real world assets with collateral
-								supported on Compound and earn income from underlying real world assets.
-							</p>
-						</div>
-
-
-						<div className="button-container1">
-
-							<li className="link-container">
-								<Link to="/">
-									<a className="link-container2">Borrowing capacity left</a>
-								</Link>
-							</li>
-
-							<button className="sidebar-button button--large button--supply" onClick={() => handleButtonClick('Borrow')}>
-								Borrow
-							</button>
-
-							<button
-								className="sidebar-button button--large button--supply"
-								onClick={() => handleButtonClick('Redeem Collateral')}
-							>
-								Redeem collateral
-							</button>
-
-							<button className="sidebar-button button--large button--supply" onClick={() => handleButtonClick('Repay Loan')}>
-								Repay loan
-							</button>
-
-							<button
-								className="sidebar-button button--large button--supply"
-								onClick={() => handleButtonClick('Issue new RWA')}
-							>
-								Issue new RWA
-							</button>
-
-						</div>
-					</div>
-				</div>
-			</div>
-			{showBorrowForm && <Modal onClose={() => setShowBorrowForm(false)}>
-				<BorrowForm />
-			</Modal>}
-			{showIssuanceForm && <Modal onClose={() => setShowIssuanceForm(false)}>
-				<AssetIssuanceForm />
-			</Modal>}
-			{showRedeemCollateralForm && <Modal onClose={() => setShowRedeemCollateralForm(false)}>
-				<RedeemCollateralForm />
-			</Modal>}
-			{showRepayLoanForm && <Modal onClose={() => setShowRepayLoanForm(false)}>
-				<RepayLoanForm />
-			</Modal>}
-		</div>
-	)
-}
 export default Issuer;

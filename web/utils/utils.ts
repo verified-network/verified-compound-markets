@@ -1,5 +1,5 @@
 import axios from "axios";
-import { TableRow } from "../provider";
+import { TableRow } from "../providero";
 import { ERC20 } from "@verified-network/verified-sdk";
 import { resolve } from "path";
 import { promises } from "dns";

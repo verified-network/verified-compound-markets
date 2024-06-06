@@ -7,35 +7,21 @@ import { Contract } from '@ethersproject/contracts';
 import {parseUnits} from '@ethersproject/units'
 import ERC20 from '../abis/ERC20';
 import { fetchUserDetails, pinToIpfs } from './utils/utils';
+import { toast } from 'react-toastify';
+import { Loader } from './utils/loader';
 
 
 
-const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, account, signer}) => {
+const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, account, signer,  setIsLoading}) => {
   const [assetAddress, setAssetAddress] = useState('');
   const [collateralAddress, setCollateralAddress] = useState('');
   const [faceValue, setFaceValue] = useState<number | ''>('');
   const [apyOffered, setApyOffered] = useState<number | ''>('');
   const [selectedCurrencyBond, setSelectedCurrencyBond] = useState<string>('');
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('');
   const [issuingDocument, setIssuingDocument] = useState<File | null>(null);
-  const [activeStep, setActiveStep] = React.useState(0);
-  const [RWAList, setRWAList] = React.useState([]);
-  const [selectedRWA, setSelectedRWA] = React.useState('');
+  const [formLoader, setFormLoader] = useState<boolean>(false);
 
-  // Function to handle going back in the Stepper
-  const handleBack = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep - 1);
-  };
-
-  // Function to handle restarting the Stepper
-  const handleMore = () => {
-    setActiveStep(0);
-  };
-
-  // Function to handle file input change
-  const handleChangeFile = async (e: any) => {
-    const file = e.target.files[0];
-    setIssuingDocument(file);
-  }
 
   let chainContractAddresses: any = contractAddress;
   chainContractAddresses = chainContractAddresses[chainId!]
@@ -60,18 +46,16 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
     }
   }
 
-  const handleSubmitNewRWA = async(collateralDecimals: number, issueingDocUrl: string) => {
+  const handleSubmitNewRWA = async(collateralDecimals: number, issueingDocUrl: string, bondTokenAddress: string) => {
     const compoundAddress = chainContractAddresses["Compound"];
     if(!compoundAddress) {
       console.error(`Compound/operator contract for chain id: ${chainId} does not exist`)
       return;
     }
-    const userDetails = await fetchUserDetails(subgraphConfig[chainId!].subgraphUrl, account!);
-    const bondIssued = userDetails.bondIssues[userDetails.bondIssues.length - 1].token.id; //Todo: use event subcriber?
     const operatorContract = new Compound(signer!, compoundAddress);
     const apyOfferedFmt = parseUnits(apyOffered.toString(), collateralDecimals).toString();
     const faceValueFmt = parseUnits(faceValue.toString(), collateralDecimals).toString(); 
-    return await operatorContract.submitNewRWA(assetAddress!, bondIssued, apyOfferedFmt, issueingDocUrl, faceValueFmt)
+    return await operatorContract.submitNewRWA(assetAddress!, bondTokenAddress, apyOfferedFmt, issueingDocUrl, faceValueFmt)
   }
 
   const handleSubmit = async(event: React.FormEvent) => {
@@ -80,7 +64,8 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
       if(
         collateralAddress !== '' && assetAddress !== '' && selectedCurrencyBond !== '' 
         && faceValue !== '' && apyOffered !== '' && issuingDocument
-      ) {    
+      ) { 
+        setFormLoader(true)   
         const collateralContract = new Contract(collateralAddress, ERC20, signer!);
         const collateralSymbol = await collateralContract.symbol().catch((err: any) =>  {
           //Todo: toast here
@@ -95,47 +80,64 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
         await handleRequestIssue(collateralContract, collateralSymbol, collateralDecimals).then(async(res: any) => {
          if(res && res.status === 0) {
           console.log("Successful RequestIssue transaction with hash: ", res.response?.hash)
-          //toast here
+          toast.success("Bond Issued Succesfully")
           //pin issue docs to ipfs(todo: should this be done first??)
+          const bondContractAddresses = chainContractAddresses["BOND"];
+          const bondContract = new Bond(signer!, bondContractAddresses[selectedCurrencyBond]);
+          const bondsIssued: any = await bondContract.getBonds().then((res: any) => {
+            return res?.response?.result
+          })
+          const issuedBond = bondsIssued[bondsIssued.length - 1];
+          console.log("bonds: ", issuedBond )
           const issueingDocHash = await pinToIpfs(issuingDocument, collateralAddress, chainId!, account!);
-          if(issueingDocHash) {
+          if(issuedBond && issueingDocHash) {
             const issueingDocUrl = `${pinataDedicatedGateway || pinataDefaultGateway}/ipfs/${issueingDocHash}`;
             console.log("ipfs url: ", issueingDocUrl)
             //call submitNewRWA
-            await handleSubmitNewRWA(collateralDecimals, issueingDocUrl).then((_res: any) => {
+            await handleSubmitNewRWA(collateralDecimals, issueingDocUrl, issuedBond).then((_res: any) => {
               if(_res && _res.status === 0) {
                 console.log("Successful SubmitNewRWA transaction with hash: ", _res.response?.hash)
-                //toast here
+                toast.success("Transaction succesful")
               }else{
                 _res && _res.message ?
                 console.error("Error from SubmitNewRWA: ", _res.message)
-                //Todo: toast here
-                : console.error("Error from SubmitNewRWA: Transaction Failed")
+                : console.error("Error from SubmitNewRWA: Transaction Failed");
+                toast.error("Transaction failed")
                 //Todo: toast here
                 
                }
             });
+          }else{
+            console.error("Error while getting last bond issued")
           }
          }else{
           res && res.message ?
           console.error("Error from request Issue: ", res.message)
           //Todo: toast here
-          : console.error("Error from request Issue: Transaction Failed")
+          : console.error("Error from request Issue: Transaction Failed");
+          toast.error("Transaction failed")
+
           //Todo: toast here
           
          }
         });
+        setFormLoader(false)
+      }else{
+        toast.error("Fill all form to proceed")
       }
     }else{
       console.error("No Wallet found. Connect wallet and try again")
       //Todo: Toast here
     }
   };
+
+  // console.log("secCur: ", selectedCurrency, "secB: ", selectedCurrencyBond)
   
 
   return (
     <div className='main'>
       <h4>Asset Issuance Form</h4>
+      {formLoader && (<Loader/>)}
       <div className='main2'>
         <form onSubmit={handleSubmit}>
           <div className='form-field'>
@@ -181,8 +183,11 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
           <div className='form-field'>
             <label>APY Offered for Currency</label>
             <select
-              value={selectedCurrencyBond}
-              onChange={(e) => setSelectedCurrencyBond(CurrenciesToBondMapping[e.target.value])}
+              value={selectedCurrency}
+              onChange={(e) => {
+                setSelectedCurrencyBond(CurrenciesToBondMapping[e.target.value])
+                setSelectedCurrency(e.target.value)
+              }}
               required
             >
               <option value='' disabled>

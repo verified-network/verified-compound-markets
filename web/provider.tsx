@@ -31,6 +31,8 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
   const [issuerBondIndex, setIsuuerBondIndex] = useState<null | string>(null);
   const [data, setData] = useState<any>([]);
   const [enteredNumber, setEnteredNumber] = useState<number | ''>('');
+  const [selectedCollateral, setSelectedCollateral] = useState<string>("");
+  const [collateralName, setCollateralName] = useState<string>("");
 
   useEffect(() => {
     setPage("/")
@@ -143,16 +145,17 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
   const handlePopupSubmit = async() => {
     // Handle the enteredNumber based on the popupAction (e.g., perform appropriate action)
     console.log(`Action: ${popupAction}, Number: ${enteredNumber}`);
-    if(enteredNumber === '' || enteredNumber === 0) {
-      console.error("amount must be greater than 0")
-      //toast here
+    if(enteredNumber === '' || enteredNumber === 0 || selectedCollateral === "") {
+      console.error("Form Not filled")
+      enteredNumber === '' || enteredNumber === 0 ? toast.error("Amount must be greater than 0") : 
+      toast.error("Select Collateral");
     }else{
       setIsLoading(true);
       //handle provide collateral
       let chainContractAddresses: any = contractAddress;
       chainContractAddresses = chainContractAddresses[chainId!]
       const bondIndex = popupAction.split("-")[1];
-        const collateralAddress = data[bondIndex].CollateralAddress;
+        const collateralAddress = selectedCollateral;
         const bondTokenAddress = data[bondIndex].BondTokenAddress;
         const asset = data[bondIndex].Asset;
       if(popupAction.startsWith("Provide Collateral")) {
@@ -163,39 +166,42 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
           const collateraldecimals = await collateralContract.decimals().then((res: any) => {return Number(res.response.result)}); //todo: change this when sdk includes decimals in token functions
           const payer = account!;
           const collateralName =  data[bondIndex].Collateral;
-          await collateralContract.approve(chainContractAddresses["BOND"][asset], parseUnits(enteredNumber.toString(), collateraldecimals).toString()).then(async(res: any) => {
+          try {
+            await collateralContract.approve(chainContractAddresses["BOND"][asset], parseUnits(enteredNumber.toString(), collateraldecimals).toString())
+          .then(async(res: any) => {
             if(res?.status === 0) {
               console.log("Successful approve transaction with hash: ", res?.response?.hash)
+              toast.success("Approve transaction succesful");
               await bondTokenContract.requestTransaction(parseUnits(enteredNumber.toString(), collateraldecimals).toString(), payer, collateralName, collateralAddress).then((_res: any) => {
                 if(_res?.status === 0) {
                   console.log("Successful request transaction with hash: ", _res?.response?.hash)
-                  //toast here
+                  toast.success("Collateral Provided Succesfully");
                 }else{
                   _res && _res.message ?
                 console.error("Error from request transaction: ", _res.message)
                 //Todo: toast here
-                : console.error("Error from request transaction: Transaction Failed")
-                //Todo: toast here
+                : console.error("Error from request transaction: Transaction Failed");
+                toast.error("Transaction failed");
                 }
   
               })
             }else{
                 res && res.message ?
               console.error("Error from request transaction: ", res.message)
-              //Todo: toast here
-              : console.error("Error from request transaction: Transaction Failed")
-              //Todo: toast here
+              : console.error("Error from request transaction: Transaction Failed");
+              toast.error("Transaction failed");
 
             }
             
-          }).catch((err: any) => {
-            if(err.includes("user rejected transaction")) {
-              toast.error("User rejected transaction")
+          })
+          } catch (err: any) {
+            if(err?.includes("user rejected transaction")) {
+              toast.error("User rejected transaction");
             }else{
-              toast.error("Approve transaction failed")
+              toast.error("Transaction failed")
             }
             
-          })
+          }
         }else{
           console.error("Bond token Address does not exist")
     
@@ -238,6 +244,7 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
     }
   };
 
+
   return (
     
       <div  className="home__content">
@@ -263,13 +270,15 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
             <div className="panel position-card L3">
               <div className="panel__header-row">
 
-							{/* Buttons to trigger actions */}
-							<button className="sidebar-button button--large button--supply" onClick={() => handleButtonClick('Provide collateral')}>
-								Provide collateral
-							</button>
-							<button className="sidebar-button button--large button--supply" onClick={() => handleButtonClick('Liquidate collateral')}>
-								Liquidate collateral
-							</button>
+                <label className="L1 label text-color--1">Summary</label>
+              </div>
+              <div className="panel__header-row">
+                <p className="text-color--1">
+                  Verified RWA Markets allows asset managers of real world assets to sell them for collateral that can 
+                  be used to borrow liquid digital assets, and for users to buy staked real world assets with collateral 
+                  supported on Compound and earn income from underlying real world assets. 
+                </p>
+              </div>
 
               <div className="buttons-cont">
         </div>
@@ -280,11 +289,31 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
         </div>
         {showPopup && (
         <div className="popup">
+          <h3>Select Collateral:</h3>
+          <select
+              value={collateralName}
+              onChange={(e) => {
+                const collateral = subgraphConfig[chainId!].acceptedCollaterals[e.target.value];
+                setSelectedCollateral(collateral.address)
+                setCollateralName(e.target.value)
+              }}
+              required
+            >
+              <option value='' disabled>
+                Select Collateral
+              </option>
+              {Object.keys(subgraphConfig[chainId!].acceptedCollaterals).map((coltr: string) => (
+                <option key={coltr} value={coltr}>
+                  {coltr}
+                </option>
+              ))}
+            </select>
           <h3>Enter a number:</h3>
           <input
             type="number"
             value={enteredNumber !== null ? enteredNumber : ''}
             onChange={(e: any) => setEnteredNumber(e.target.value)}
+            placeholder={collateralName.length > 0? collateralName + " " + "Amount" : "Collateral Amount"}
           />
           <div className="buttons-container">
             <button className="button-submit button--large button--supply" onClick={handlePopupSubmit}>
@@ -342,15 +371,7 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
       )}
       </div>
 
-			{/* Modals for providing and liquidating collateral */}
-			{showProvideCollateralForm && <Modal onClose={() => setShowProvideCollateralForm(false)}>
-				<ProvideCollateralForm />
-			</Modal>}
-			{showLiquidateCollateralForm && <Modal onClose={() => setShowLiquidateCollateralForm(false)}>
-				<LiquidateCollateralForm />
-			</Modal>}
-		</div>
-	);
+  );
 }
 
 export default Providers;

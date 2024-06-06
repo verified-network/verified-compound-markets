@@ -7,14 +7,14 @@ interface ModalProps extends ComponentDefaultprops {
   onClose: () => void;
 }
 
-const Modal: React.FC<ModalProps> = ({ onClose,  web3, chainId, account, signer }) => {
+const Modal: React.FC<ModalProps> = ({ onClose,  web3, chainId, account, signer, setIsLoading }) => {
   return (
     <div className="modal-overlay">
       <div className="modal-content">
         <button className="modal-close-button button--large button--supply" onClick={onClose}>
           Close
         </button>
-        <AssetIssuanceForm web3={web3} chainId={chainId} account={account} signer={signer} />
+        <AssetIssuanceForm web3={web3} chainId={chainId} account={account} signer={signer} setIsLoading={setIsLoading} />
       </div>
     </div>
   );
