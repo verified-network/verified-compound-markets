@@ -39,7 +39,7 @@ export const subgraphConfig: any = {
         explorerUrl: "https://sepolia.etherscan.io/"
     },
     84532: {
-        subgraphUrl: "https://api.studio.thegraph.com/proxy/77016/wallet-base/0.0.2/",
+        subgraphUrl: "https://api.studio.thegraph.com/proxy/77016/wallet-base/0.0.5/",
         explorerUrl: "https://sepolia.basescan.org/",
         acceptedCollaterals: {
             "WETH": {

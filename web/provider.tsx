@@ -5,7 +5,7 @@ import TableData from './provider_data';
 import { ComponentDefaultprops, subgraphConfig } from './utils/constants';
 import { Bond, ERC20, Token, contractAddress } from '@verified-network/verified-sdk';
 import { parseUnits } from '@ethersproject/units';
-import { fetchTokens } from './utils/utils';
+import { fetchRwas, fetchTokens } from './utils/utils';
 import {toast} from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 
@@ -13,10 +13,10 @@ export interface TableRow {
   "Asset": string;
   "Issuer": string,
   "Collateral": string;
-  // "APY": string;
+  "APY": string;
   'Currency': string;
-  'Face Value': string;
-  // 'Issuing Docs': string;
+  // 'Face Value': string;
+  'Issuing Docs': string;
   "Collateral Posted": string;
   "Status": string;
   "Action": string
@@ -28,7 +28,7 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
   const [showPopup, setShowPopup] = useState(false);
   const [showIssuerDetails, setShowIssuerDetails] = useState(false);
   const [popupAction, setPopupAction] = useState('');
-  const [issuerBondIndex, setIsuuerBondIndex] = useState<null | string>(null);
+  const [issuerBondIndex, setIssuerBondIndex] = useState<null | string>(null);
   const [data, setData] = useState<any>([]);
   const [enteredNumber, setEnteredNumber] = useState<number | ''>('');
   const [selectedCollateral, setSelectedCollateral] = useState<string>("");
@@ -42,7 +42,7 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
   useEffect(() => {
     const getRWAMarkets = async() => {
       if(subgraphConfig && subgraphConfig[chainId!] && subgraphConfig[chainId!].subgraphUrl && web3 && signer) {
-        const resData = await fetchTokens(subgraphConfig[chainId!].subgraphUrl, web3, signer);
+        const resData = await fetchRwas(subgraphConfig[chainId!].subgraphUrl, web3, signer);
         setData(resData);
       }
     }
@@ -54,10 +54,10 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
     "Asset",
     "Issuer",
     'Collateral',
-    // 'APY',
+    'APY',
     'Currency',
-    'Face Value',
-    // 'Issuing Docs',
+    // 'Face Value',
+    'Issuing Docs',
     'Collateral Posted',
     'Status',
     'Action'
@@ -85,6 +85,14 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
                 className='asset-url'
                 target='_blank'
                 href={`${subgraphConfig[chainId!].explorerUrl}address/${rowData["BondTokenAddress"]}`}
+                >
+                  {rowData[headerName]}
+                </a></td>;
+              }else if(headerName.startsWith("Issuing Docs")){
+                return <td key={headerName}><a 
+                className='asset-url'
+                target='_blank'
+                href= {rowData["DocUrl"]}
                 >
                   {rowData[headerName]}
                 </a></td>;
@@ -136,7 +144,7 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
       setPopupAction(action);
     } else {
       setShowIssuerDetails(true)
-      setIsuuerBondIndex(action.split("-")[1])
+      setIssuerBondIndex(action.split("-")[1])
     }
   };
 
@@ -165,13 +173,13 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
           // const tokenDecimals = await tokenContract.decimals().then((res: any) => {return res.response.result});
           const collateraldecimals = await collateralContract.decimals().then((res: any) => {return Number(res.response.result)}); //todo: change this when sdk includes decimals in token functions
           const payer = account!;
-          const collateralName =  data[bondIndex].Collateral;
           try {
             await collateralContract.approve(chainContractAddresses["BOND"][asset], parseUnits(enteredNumber.toString(), collateraldecimals).toString())
           .then(async(res: any) => {
             if(res?.status === 0) {
               console.log("Successful approve transaction with hash: ", res?.response?.hash)
               toast.success("Approve transaction succesful");
+              console.log("name: ", collateralName)
               await bondTokenContract.requestTransaction(parseUnits(enteredNumber.toString(), collateraldecimals).toString(), payer, collateralName, collateralAddress).then((_res: any) => {
                 if(_res?.status === 0) {
                   console.log("Successful request transaction with hash: ", _res?.response?.hash)
@@ -328,40 +336,56 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
       {showIssuerDetails && (
           <div className="popup">
             <div style={{display: "flex", paddingBottom: "10px"}}>
+              <div style={{paddingRight: "10px", flex: "1"}}><b>Issuer Address</b></div>
+              <div style={{paddingLeft: "10px"}}>
+              <a 
+                className='asset-url'
+                target='_blank'
+                href= {issuerBondIndex && chainId ? `${subgraphConfig[chainId!].explorerUrl}address/${data[issuerBondIndex].IssuerAddress}` : ""}
+                >
+                  {issuerBondIndex ? 
+                  data[issuerBondIndex].IssuerAddress.substring(0, 5) + 
+                  "..." +
+                  data[issuerBondIndex].IssuerAddress.substring(data[issuerBondIndex].IssuerAddress.length - 3, data[issuerBondIndex].IssuerAddress.length)
+                  : ""}
+                </a>
+                </div>
+            </div>
+            <div style={{display: "flex", paddingBottom: "10px"}}>
               <div style={{paddingRight: "10px", flex: "1"}}><b>Issuer Name</b></div>
-              <div style={{paddingLeft: "10px"}}>Moses Adeolu</div>
+              <div style={{paddingLeft: "10px"}}>{issuerBondIndex ? data[issuerBondIndex].Issuer: ""}</div>
             </div>
             <div style={{display: "flex", paddingBottom: "10px"}}>
               <div style={{paddingRight: "10px", flex: "1"}}><b>Issuer Country</b></div>
-              <div style={{paddingLeft: "10px"}}>Nigeria</div>
+              <div style={{paddingLeft: "10px"}}>{issuerBondIndex ? data[issuerBondIndex].IssuerCountry: ""}</div>
             </div>
             <div style={{display: "flex", paddingBottom: "10px"}}>
               <div style={{paddingRight: "10px", flex: "1"}}><b>Number of issues by Issuer</b></div>
-              <div style={{paddingLeft: "10px"}}>100</div>
+              <div style={{paddingLeft: "10px"}}>{issuerBondIndex ? data[issuerBondIndex].IssuerTotalIssues: 0}</div>
             </div>
             <div style={{display: "flex", paddingBottom: "10px"}}>
               <div style={{paddingRight: "10px", flex: "1"}}><b>Total borrowing for all issues</b></div>
-              <div style={{paddingLeft: "10px"}}>20</div>
+              <div style={{paddingLeft: "10px"}}>{issuerBondIndex ? data[issuerBondIndex].IssuerTotalIssuesBorrowed: 0}</div>
             </div>
             <div style={{display: "flex", paddingBottom: "10px"}}>
               <div style={{paddingRight: "10px", flex: "1"}}><b>Borrowing for this issue</b></div>
-              <div style={{paddingLeft: "10px"}}>5</div>
+              <div style={{paddingLeft: "10px"}}>{issuerBondIndex ? data[issuerBondIndex].Borrowed: 0}</div>
             </div>
             <div style={{display: "flex", paddingBottom: "10px"}}>
               <div style={{paddingRight: "10px", flex: "1"}}><b>Total repayments for all issue</b></div>
-              <div style={{paddingLeft: "10px"}}>30</div>
+              <div style={{paddingLeft: "10px"}}>{issuerBondIndex ? data[issuerBondIndex].IssuerTotalIssuesRepaid: 0}</div>
             </div>
             <div style={{display: "flex", paddingBottom: "10px"}}>
               <div style={{paddingRight: "10px", flex: 1}}><b>Repayment of this issue</b></div>
-              <div style={{paddingLeft: "10px"}}>10</div>
+              <div style={{paddingLeft: "10px"}}>{issuerBondIndex ? data[issuerBondIndex].Repaid : 0}</div>
             </div>
             <div style={{display: "flex", paddingBottom: "10px"}}>
               <div style={{paddingRight: "10px", flex: 1}}><b>Number of issues defaulted</b></div>
-              <div style={{paddingLeft: "10px", }}>90000000000</div>
+              <div style={{paddingLeft: "10px", }}>0</div>
             </div>
             <div style={{paddingTop: "10px"}} className="buttons-container">
                   <button className="button-cancel button--large button--supply" onClick={() => {
-                    setIsuuerBondIndex(null)
+                    setIssuerBondIndex(null)
                     setShowIssuerDetails(false)
                   }}>
                     Close

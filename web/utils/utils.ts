@@ -89,7 +89,8 @@ export const fetchTokens = async (subgraphUrl: string, web3: any, signer: any) =
             data.push({
               "Asset": web3.utils.hexToAscii(bond.bondName.toString()).replace(/\0/g, ""),
               "Issuer": bond.issuer? web3.utils.hexToAscii(bond.issuer.name.toString()).replace(/\0/g, ""): "",
-              "Collateral": web3.utils.hexToAscii(bond.collateralCurrency.toString()).replace(/\0/g, ""),
+              "Collateral": web3.utils.hexToAscii(bond.collateralCurrency.toString().replace(/\0/g, "")).replace(/\0/g, ""),
+              "CollateralName": bond.collateralCurrency.toString(),
               "CollateralAddress": bond.collateralCurrency?.id ? bond.collateralCurrency.id.toString() : "0xE4aB69C077896252FAFBD49EFD26B5D171A32410", //change when subgraph is fixed
               "BondTokenAddress": tokens.token.toString(),
               // "APY": bond.issuedAmount.toString(),
@@ -121,6 +122,145 @@ export const fetchTokens = async (subgraphUrl: string, web3: any, signer: any) =
       return []
     })
 };
+
+export const fetchRwas = async (subgraphUrl: string, web3: any, signer: any) => {
+  const query = `query {
+    rwas{
+      id
+      issuer{
+        id
+        name
+        accountid
+        country
+        bondIssues{
+          id
+        }
+      }
+      bond{
+        id
+        token
+        tokenName
+        tokenType
+        bondIssues{
+          id
+          collateralAmount
+          collateralCurrency
+          issuedAmount
+          bondName
+        }
+        bondPurchases{
+        id
+        token{
+          id
+          token
+          tokenName
+          tokenType
+        }
+        bondName
+        purchaseValue
+        paidInCurrency
+        purchasedAmount 
+        purchaseTime
+      }
+      bondRedemptions{
+        id
+        token{
+          id
+          token
+          tokenName
+          tokenType
+        }
+        bondName
+        redeemedValue
+        redemptionCurrency
+        redemptionAmount 
+      }
+      bondLiquidations{
+        id
+        token{
+          id
+          token
+          tokenName
+          tokenType
+        }
+        liquidatedValue
+        bondName
+        liquidationCurrency
+        liquidatedAmount  
+      }
+      }
+      apy
+      issuingDocs
+      faceValue
+    }
+  }`;
+  return await axios({
+    method: "POST",
+    url: subgraphUrl,
+    data: {
+      query: query,
+    },
+  })
+    .then((res: any) => {
+      if (res.data.errors) {
+        console.error("error while fetching Rwas: ", res.data.errors)
+        return []
+      } else {
+        const allRwas = res.data.data.rwas;
+        let data: any[] = [];
+        allRwas.map((rwa: any) => {
+          rwa.bond.bondIssues.map((bond: any) => {
+            data.push({
+                "Asset": web3.utils.hexToAscii(bond.bondName?.toString()).replace(/\0/g, ""),
+                "Issuer": rwa.issuer? web3.utils.hexToAscii(rwa.issuer.name.toString()).replace(/\0/g, ""): "",
+                "IssuerAddress": rwa.issuer? rwa.issuer.id.toString() : "",
+                "IssuerCountry": rwa.issuer? web3.utils.hexToAscii(rwa.issuer.country.toString()).replace(/\0/g, ""): "",
+                "IssuerTotalIssues": rwa.issuer? rwa.issuer.bondIssues.length.toString(): "0",
+                "IssuerTotalIssuesBorrowed": allRwas.filter((_rwa: any) => _rwa.issuer.id === rwa.issuer.id).map((irwa: any) =>{
+                  return irwa.bond.bondPurchases.map((prch: any) =>{ return Number(web3.utils.fromWei(prch.purchasedAmount.toString(), "ether"))}).reduce((a:number , c: number) => {
+                    return a + c
+                  }, 0)
+                }).reduce((y:number , z: number) => {
+                  return y + z
+                }, 0),
+                "IssuerTotalIssuesRepaid": "0", //Todo: update this
+                "Collateral": web3.utils.hexToAscii(bond.collateralCurrency.toString()).replace(/\0/g, ""),
+                "CollateralName": bond.collateralCurrency.toString(),
+                "BondTokenAddress": rwa.bond.token.toString(),
+                // "Face Value": rwa.faceValue.toString() === "0" ? rwa.faceValue.toString() : web3.utils.fromWei(rwa.faceValue.toString(), "ether"),
+                'Currency': web3.utils.hexToAscii(bond.bondName.toString()).replace(/\0/g, "").replace("VB", ""),
+                'APY': rwa.apy.toString() === "0"? rwa.apy.toString() : web3.utils.fromWei(rwa.apy.toString(), "ether"),
+                "Issued Value": bond.issuedAmount.toString() === "0"?  bond.issuedAmount.toString(): web3.utils.fromWei(bond.issuedAmount.toString(), "ether"),
+                'Issuing Docs': rwa.issuingDocs.toString().substring(0, 15) + "..." + rwa.issuingDocs.toString().substring(rwa.issuingDocs.toString().length - 5, rwa.issuingDocs.toString().length),
+                "DocUrl": rwa.issuingDocs.toString(),
+                "Borrowed": rwa.bond.bondPurchases.map((prch: any) =>{ return Number(web3.utils.fromWei(prch.purchasedAmount.toString(), "ether"))}).reduce((a:number , c: number) => {
+                  return a + c
+                }, 0),
+                "Repaid": "0", //Todo: update this
+                "Sold Value": rwa.bond.bondPurchases.map((prch: any) =>{ return Number(web3.utils.fromWei(prch.purchasedAmount.toString(), "ether"))}).reduce((a:number , c: number) => {
+                  return a + c
+                }, 0),
+                "Collateral Posted": bond.collateralAmount.toString() === "0"?  bond.collateralAmount.toString()
+                : web3.utils.fromWei(bond.collateralAmount.toString(), "ether"),
+                "Status": rwa.bond.bondRedemptions.filter((rmdBond: any) => rmdBond.id.toLowerCase() === bond.id.toLowerCase())?.redemptionAmount == bond.collateralAmount || 
+                rwa.bond.bondLiquidations.filter((lqdBond: any) => lqdBond.id.toLowerCase() === bond.id.toLowerCase())?.liquidatedAmount ==  bond.collateralAmount ? "Inactive" : "Active",
+                "Action": "",
+              })
+          })
+        
+        
+        })
+        return data
+      }
+      
+    })
+    .catch((err: any) => {
+      console.error("error while fetching Rwa: ", err)
+      return []
+    })
+};
+
+
 
 export const fetchCollaterals = async (subgraphUrl: string) => {
   const query = `query {

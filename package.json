@@ -4,15 +4,13 @@
   "type": "module",
   "license": "BUSL-1.1",
   "scripts": {
+    "start": "vite",
+    "build": "tsc && vite build",
     "web:dev": "vite",
     "web:build": "tsc && vite build",
     "web:deploy": "tsc && vite build && node script/ipfs.js",
     "web:preview": "vite preview",
-    "web:test": "jest",
-    "forge:build": "forge build",
-    "forge:test": "script/test.sh",
-    "forge:lint": "solhint '{src,script,test}/**/*.sol'",
-    "forge:playground": "script/playground.sh"
+    "web:test": "jest"
   },
   "dependencies": {
     "@apollo/client": "^3.8.7",

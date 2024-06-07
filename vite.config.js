@@ -19,9 +19,12 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: resolve(__dirname, "index.html"),
-        embedded: resolve(__dirname, "embedded.html"),
       },
       plugins: [nodePolyfills()],
+      external: [
+        "@safe-globalThis/safe-apps-provider",
+        "@safe-globalThis/safe-apps-sdk",
+      ],
     },
   },
   base: "",
