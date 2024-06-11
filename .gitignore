@@ -9,6 +9,7 @@ out/
 
 # dependencies
 /node_modules
+/backend/node_modules
 /.pnp
 .pnp.js
 /.yarn
@@ -29,13 +30,17 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+yarn.lock
+
 # local env files
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+/backend/.env
 
 # typescript
 *.tsbuildinfo
 
 .release
+.env
