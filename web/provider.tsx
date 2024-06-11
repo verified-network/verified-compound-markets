@@ -13,10 +13,10 @@ export interface TableRow {
   "Asset": string;
   "Issuer": string,
   "Collateral": string;
-  "APY": string;
+  // "APY": string;
   'Currency': string;
   // 'Face Value': string;
-  'Issuing Docs': string;
+  // 'Issuing Docs': string;
   "Collateral Posted": string;
   "Status": string;
   "Action": string
@@ -42,7 +42,7 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
   useEffect(() => {
     const getRWAMarkets = async() => {
       if(subgraphConfig && subgraphConfig[chainId!] && subgraphConfig[chainId!].subgraphUrl && web3 && signer) {
-        const resData = await fetchRwas(subgraphConfig[chainId!].subgraphUrl, web3, signer);
+        const resData = await fetchTokens(subgraphConfig[chainId!].subgraphUrl, web3, signer);
         setData(resData);
       }
     }
@@ -54,10 +54,10 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
     "Asset",
     "Issuer",
     'Collateral',
-    'APY',
+    // 'APY',
     'Currency',
     // 'Face Value',
-    'Issuing Docs',
+    // 'Issuing Docs',
     'Collateral Posted',
     'Status',
     'Action'

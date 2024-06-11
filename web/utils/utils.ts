@@ -91,7 +91,7 @@ export const fetchTokens = async (subgraphUrl: string, web3: any, signer: any) =
               "Issuer": bond.issuer? web3.utils.hexToAscii(bond.issuer.name.toString()).replace(/\0/g, ""): "",
               "Collateral": web3.utils.hexToAscii(bond.collateralCurrency.toString().replace(/\0/g, "")).replace(/\0/g, ""),
               "CollateralName": bond.collateralCurrency.toString(),
-              "CollateralAddress": bond.collateralCurrency?.id ? bond.collateralCurrency.id.toString() : "0xE4aB69C077896252FAFBD49EFD26B5D171A32410", //change when subgraph is fixed
+              "CollateralAddress": bond.collateralCurrency?.id ? bond.collateralCurrency.id.toString() : "",
               "BondTokenAddress": tokens.token.toString(),
               // "APY": bond.issuedAmount.toString(),
               'Currency': web3.utils.hexToAscii(bond.bondName.toString()).replace(/\0/g, "").replace("VB", ""),

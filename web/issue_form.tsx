@@ -46,12 +46,13 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
 
   const handleRequestIssue = async(collateralContract: any, collateralSymbol: string, collateralDecimals: number) => {
     if(collateralContract && collateralSymbol && collateralDecimals) {
+      console.log("symbol: ", collateralSymbol)
       const bondContractAddresses = chainContractAddresses["BOND"];
       if (!bondContractAddresses) {
         console.error(`Bond contract for chain id: ${chainId} does not exist`)
         return;
       }
-      const operatorAddress = chainContractAddresses["Compound"];
+      const operatorAddress = "0x593cF24a170aE5359E14507EC2776D66f8494D40"  //chainContractAddresses["Compound"];
       return await handleSecuritiesWhitelist(collateralAddress, operatorAddress, bondContractAddresses[selectedCurrencyBond], parseUnits(faceValue.toString(), collateralDecimals).toString())
       .then(async(hres: any) => {
         if(hres?.status === 0) {
@@ -100,7 +101,7 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
   }
 
   const handleSubmitNewRWA = async(collateralDecimals: number, issueingDocUrl: string, bondTokenAddress: string) => {
-    const compoundAddress = chainContractAddresses["Compound"];
+    const compoundAddress = "0x593cF24a170aE5359E14507EC2776D66f8494D40"  //chainContractAddresses["Compound"];
     if(!compoundAddress) {
       console.error(`Compound/operator contract for chain id: ${chainId} does not exist`)
       return;
@@ -125,9 +126,7 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
         const collateralDecimals = await collateralContract.decimals().then((res: any) => {
           return Number(res?.response?.result)
         })
-        const bondContractAddresses = chainContractAddresses["BOND"];
-        const bondContract = new Bond(signer!, bondContractAddresses[selectedCurrencyBond]);
-        await bondContract.requestIssue(parseUnits(faceValue.toString(), collateralDecimals).toString(), account!, collateralSymbol.replace(/\0/g, ""), collateralAddress).then(async(res: any) => {
+        await handleRequestIssue(collateralContract, collateralSymbol.replace(/\0/g, ""), collateralDecimals).then(async(res: any) => {
          if(res && res.status === 0) {
           console.log("Successful RequestIssue transaction with hash: ", res.response?.hash)
           toast.success("Bond Issued Succesfully")

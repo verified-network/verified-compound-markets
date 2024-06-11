@@ -55,7 +55,10 @@ export const subgraphConfig: any = {
                 address: "0x2f535da74048c0874400f0371Fba20DF983A56e2"
             }
         },
-        baseToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+        baseToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        cUSDCv3: "0x571621Ce60Cebb0c1D442B5afb38B1663C6Bf017",
+        cUSDCExt: "0xe28860fBB866751b0c0CB07ce1BA54F467b19B03",
+
     }
     
 }

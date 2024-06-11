@@ -114,7 +114,7 @@ contract VerifiedMarkets is RWA {
             "Comet Collateral provisioning: Invalid"
         );
         //check if supply cap of collateral is not breached
-        comet.supplyTo(msg.sender, collateral, amount);
+        comet.supplyFrom(msg.sender, msg.sender, collateral, amount);
         if (guarantees[msg.sender][asset].collateral != collateral) {
             RWA.Collateral memory guarantee = RWA.Collateral({
                 collateral: collateral,
@@ -148,7 +148,7 @@ contract VerifiedMarkets is RWA {
             "Borrowing base : Invalid"
         );
         //does borrower have collateral to borrow ? (&& comet.isBorrowCollateralized(msg.sender))
-        comet.withdrawTo(msg.sender, base, amount);
+        comet.withdrawFrom(msg.sender, msg.sender, base, amount);
         guarantees[msg.sender][asset].borrowed =
             guarantees[msg.sender][asset].borrowed +
             amount;
@@ -173,18 +173,14 @@ contract VerifiedMarkets is RWA {
         guarantees[msg.sender][asset].borrowed =
             guarantees[msg.sender][asset].borrowed -
             amount;
-        comet.supplyTo(msg.sender, base, amount);
+        comet.supplyFrom(msg.sender, msg.sender, base, amount);
         uint256 collateralToWithdraw = comet
             .getAssetInfoByAddress(base)
             .borrowCollateralFactor * amount;
         guarantees[msg.sender][asset].collateralAmount =
             guarantees[msg.sender][asset].collateralAmount -
             collateralToWithdraw;
-        comet.withdrawTo(
-            msg.sender,
-            guarantees[msg.sender][asset].collateral,
-            collateralToWithdraw
-        );
+        comet.withdrawFrom(msg.sender, msg.sender, guarantees[msg.sender][asset].collateral, collateralToWithdraw);
         emit Repaid(msg.sender, base, amount);
     }
 }
