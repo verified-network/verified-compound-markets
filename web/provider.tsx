@@ -13,10 +13,10 @@ export interface TableRow {
   "Asset": string;
   "Issuer": string,
   "Collateral": string;
-  // "APY": string;
+  "APY": string;
   'Currency': string;
   // 'Face Value': string;
-  // 'Issuing Docs': string;
+  'Issuing Docs': string;
   "Collateral Posted": string;
   "Status": string;
   "Action": string
@@ -42,7 +42,7 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
   useEffect(() => {
     const getRWAMarkets = async() => {
       if(subgraphConfig && subgraphConfig[chainId!] && subgraphConfig[chainId!].subgraphUrl && web3 && signer) {
-        const resData = await fetchTokens(subgraphConfig[chainId!].subgraphUrl, web3, signer);
+        const resData = await fetchRwas(subgraphConfig[chainId!].subgraphUrl, web3, signer);
         setData(resData);
       }
     }
@@ -54,10 +54,10 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
     "Asset",
     "Issuer",
     'Collateral',
-    // 'APY',
+    'APY',
     'Currency',
     // 'Face Value',
-    // 'Issuing Docs',
+    'Issuing Docs',
     'Collateral Posted',
     'Status',
     'Action'
@@ -138,11 +138,53 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
     });
   };
 
-  const handleButtonClick = (action: string) => {
-    if (action.startsWith('Provide Collateral') || action.startsWith('Liquidate Collateral')) {
+  const handleLiquidateCollateral = async(bondTokenAddress: string) => {
+    if(bondTokenAddress) {
+      setIsLoading(true)
+      const bondERC20Contract = new ERC20(signer!, bondTokenAddress);
+      const bondTokenContract = new Token(signer!, bondTokenAddress);
+      const investorBalance = await bondERC20Contract.balanceOf(account!).then((res: any) => {return Number(res.response.result)});
+      if(investorBalance > 0) {
+        const tokenDecimals = await bondERC20Contract.decimals().then((res: any) => {return Number(res.response.result)});
+        console.log("balance: ", parseUnits(investorBalance.toString(), tokenDecimals).toString())
+        await bondTokenContract.transferFrom(account!, bondTokenAddress, parseUnits(investorBalance.toString(), tokenDecimals).toString()).then((res: any) => {
+          if(res && res.status === 0 && res.response && res.response.hash) {
+            console.log("Successful transfer from transaction with hash: ", res.response.hash)
+            toast.success("Bond Liquidated succesfully")
+            //toast here
+          }else{
+            res && res.message ?
+          console.error("Error from transferFrom: ", res.message)
+          //Todo: toast here
+          : console.error("Error from transferFrom: Transaction Failed")
+          //Todo: toast here
+          toast.error("Transaction failed")
+          }
+          setIsLoading(false)
+        })
+      }else{
+        console.error("Bond Token balance is 0")
+        toast.error("Insufficient Bond Balance")
+        setIsLoading(false)
+      }
+      
+    }else{
+      console.error("Bond token Address does not exist")
+      toast.error("Transaction failed")
+    }
+  }
+
+  const handleButtonClick = async(action: string) => {
+    if (action.startsWith('Provide Collateral')) {
       setShowPopup(true);
       setPopupAction(action);
-    } else {
+    }else if(action.startsWith('Liquidate Collateral')) {
+      const bondIndex = action.split("-")[1];
+      const bondTokenAddress = data[bondIndex].BondTokenAddress
+      console.log("bondToken: ", bondTokenAddress)
+      await handleLiquidateCollateral(bondTokenAddress);
+    } 
+    else {
       setShowIssuerDetails(true)
       setIssuerBondIndex(action.split("-")[1])
     }
@@ -173,13 +215,12 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
           // const tokenDecimals = await tokenContract.decimals().then((res: any) => {return res.response.result});
           const collateraldecimals = await collateralContract.decimals().then((res: any) => {return Number(res.response.result)}); //todo: change this when sdk includes decimals in token functions
           const payer = account!;
-          try {
-            await collateralContract.approve(chainContractAddresses["BOND"][asset], parseUnits(enteredNumber.toString(), collateraldecimals).toString())
+          await collateralContract.approve(chainContractAddresses["BOND"][asset], parseUnits(enteredNumber.toString(), collateraldecimals).toString())
           .then(async(res: any) => {
             if(res?.status === 0) {
               console.log("Successful approve transaction with hash: ", res?.response?.hash)
               toast.success("Approve transaction succesful");
-              console.log("name: ", collateralName)
+              console.log("name: ", collateralName, collateralAddress)
               await bondTokenContract.requestTransaction(parseUnits(enteredNumber.toString(), collateraldecimals).toString(), payer, collateralName, collateralAddress).then((_res: any) => {
                 if(_res?.status === 0) {
                   console.log("Successful request transaction with hash: ", _res?.response?.hash)
@@ -202,14 +243,6 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
             }
             
           })
-          } catch (err: any) {
-            if(err?.includes("user rejected transaction")) {
-              toast.error("User rejected transaction");
-            }else{
-              toast.error("Transaction failed")
-            }
-            
-          }
         }else{
           console.error("Bond token Address does not exist")
     
@@ -217,33 +250,6 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
         }
       }
 
-      //handle Liquidate collateral
-      if(popupAction.startsWith("Liquidate Collateral")) {
-        if(bondTokenAddress) {
-          const bondERC20Contract = new ERC20(signer!, chainContractAddresses["BOND"][asset]);
-          const bondTokenContract = new Token(signer!, chainContractAddresses["BOND"][asset]);
-          // const tokenDecimals = await tokenContract.decimals().then((res: any) => {return res.response.result});
-          const tokenDecimals = await bondERC20Contract.decimals().then((res: any) => {return Number(res.response.result)});
-          await bondTokenContract.transferFrom(account!, bondTokenAddress, parseUnits(enteredNumber.toString(), tokenDecimals).toString()).then((res: any) => {
-            if(res && res.status === 0 && res.response && res.response.hash) {
-              console.log("Successful transfer from transaction with hash: ", res.response.hash)
-        
-              //toast here
-            }else{
-              res && res.message ?
-            console.error("Error from transferFrom: ", res.message)
-            //Todo: toast here
-            : console.error("Error from transferFrom: Transaction Failed")
-            //Todo: toast here
-      
-            }
-          })
-        }else{
-          console.error("Bond token Address does not exist")
-    
-          //Toast here
-        }
-      }
       // Reset states after submission
       setShowPopup(false);
       setPopupAction('');

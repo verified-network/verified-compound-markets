@@ -180,7 +180,12 @@ contract VerifiedMarkets is RWA {
         guarantees[msg.sender][asset].collateralAmount =
             guarantees[msg.sender][asset].collateralAmount -
             collateralToWithdraw;
-        comet.withdrawFrom(msg.sender, msg.sender, guarantees[msg.sender][asset].collateral, collateralToWithdraw);
+        comet.withdrawFrom(
+            msg.sender,
+            msg.sender,
+            guarantees[msg.sender][asset].collateral,
+            collateralToWithdraw
+        );
         emit Repaid(msg.sender, base, amount);
     }
 }

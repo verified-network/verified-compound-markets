@@ -19,7 +19,7 @@ interface TableRow {
   "Sold Value": string;
   "Collateral Posted": string;
   "Borrowed": string;
-  // "APY": string;
+  "APY": string;
   "Status": string;
   "Action": string;
 }
@@ -44,7 +44,7 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
   useEffect(() => {
     const getRWAMarkets = async() => {
       if(subgraphConfig && subgraphConfig[chainId!]?.subgraphUrl && web3 && signer) {
-        const resData = await fetchTokens(subgraphConfig[chainId!].subgraphUrl, web3, signer);
+        const resData = await fetchRwas(subgraphConfig[chainId!].subgraphUrl, web3, signer);
         setData(resData);
       }
     }
@@ -58,7 +58,7 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
     'Sold Value',
     'Collateral Posted',
     'Borrowed',
-    // 'APY',
+    'APY',
     'Status',
     "Action"
   ];
@@ -121,6 +121,12 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
                 </div>
                 <div
                  className="dropdown-action"
+                onClick={() => handleButtonClick(`Reclaim Collateral-${rowIndex}`)}
+                >
+                  Reclaim Collateral
+                </div>
+                <div
+                 className="dropdown-action"
                 onClick={() => handleButtonClick(`Issuer Details-${rowIndex}`)}
                 >
                   Issuer Details
@@ -135,14 +141,53 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
     });
   };
 
-  const handleButtonClick = (action: string) => {
+  const handleReclaimCollateral = async(bondTokenAddress: string) => {
+    if(bondTokenAddress) {
+      setIsLoading(true)
+      const bondERC20Contract = new ERC20(signer!, bondTokenAddress);
+      const bondTokenContract = new Token(signer!, bondTokenAddress);
+      const issuerBalance = await bondERC20Contract.balanceOf(account!).then((res: any) => {return Number(res.response.result)});
+      if(issuerBalance > 0) {
+        const tokenDecimals = await bondERC20Contract.decimals().then((res: any) => {return Number(res.response.result)});
+        await bondTokenContract.transferFrom(account!, bondTokenAddress, parseUnits(issuerBalance.toString(), tokenDecimals).toString()).then((res: any) => {
+          if(res?.status === 0 ) {
+            console.log("Successful transfer from transaction with hash: ", res?.response?.hash)
+            toast.success("Bond Reclaimed succesfully")
+            //toast here
+          }else{
+            res && res.message ?
+          console.error("Error from transferFrom: ", res.message)
+          //Todo: toast here
+          : console.error("Error from transferFrom: Transaction Failed")
+          //Todo: toast here
+          toast.error("Transaction failed")
+          }
+          setIsLoading(false)
+        })
+      }else{
+        console.error("Bond Token balance is 0")
+        toast.error("Insufficient Bond Balance")
+        setIsLoading(false)
+      }
+    }else{
+      console.error("Bond token Address does not exist")
+      toast.error("Transaction failed")
+    }
+  }
+
+  const handleButtonClick = async(action: string) => {
     if (action === 'Issue new RWA') {
       // Handle Issue new RWA action
       setShowIssuanceForm(true);
-    } else if(action.startsWith("Issuer Details")) {
+    } else if(action.startsWith("Reclaim Collateral")) {
+      const bondIndex = action.split("-")[1];
+      const bondTokenAddress = data[bondIndex].BondTokenAddress
+      await handleReclaimCollateral(bondTokenAddress);
+    }else if(action.startsWith("Issuer Details")) {
       setShowIssuerDetails(true)
       setIssuerBondIndex(action.split("-")[1])
-    }else{
+    }
+    else{
       setShowPopup(true);
       setPopupAction(action);
     }
@@ -227,7 +272,7 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
       setIsLoading(true)
       //handle borrow
       if(popupAction.startsWith("Borrow")) {
-        const compoundAddress = "0x593cF24a170aE5359E14507EC2776D66f8494D40"  //chainContractAddresses["Compound"];
+        const compoundAddress = chainContractAddresses["Compound"];
         console.log("operatoe address: ", compoundAddress)
         if(!compoundAddress) {
           console.error(`Compound/operator contract for chain id: ${chainId} does not exist`)
@@ -282,7 +327,7 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
           await collateralContract.approve(chainContractAddresses["BOND"][asset], parseUnits(enteredNumber.toString(), collateraldecimals).toString()).then(async(res: any) => {
             if(res?.status === 0) {
               console.log("Successful approve transaction with hash: ", res?.response?.hash)
-              console.log("name: ", collateralName, "add: ", collateralAddress)
+              console.log("name: ", collateralName, "add: ", collateralAddress, "amount: ", parseUnits(enteredNumber.toString(), collateraldecimals).toString())
               await bondTokenContract.requestTransaction(parseUnits(enteredNumber.toString(), collateraldecimals).toString(), payer, collateralName, collateralAddress).then((_res: any) => {
                 if(_res?.status === 0) {
                   console.log("Successful request transaction with hash: ", _res?.response?.hash)
@@ -313,7 +358,7 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
       
       //handle repay loan
       if(popupAction.startsWith("Repay Loan")) {
-        const compoundAddress = "0x593cF24a170aE5359E14507EC2776D66f8494D40"  //chainContractAddresses["Compound"];
+        const compoundAddress = chainContractAddresses["Compound"];
         if(!compoundAddress) {
           console.error(`Compound/operator contract for chain id: ${chainId} does not exist`)
         }else{

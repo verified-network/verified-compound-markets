@@ -52,7 +52,8 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
         console.error(`Bond contract for chain id: ${chainId} does not exist`)
         return;
       }
-      const operatorAddress = "0x593cF24a170aE5359E14507EC2776D66f8494D40"  //chainContractAddresses["Compound"];
+
+      const operatorAddress = chainContractAddresses["Compound"];
       return await handleSecuritiesWhitelist(collateralAddress, operatorAddress, bondContractAddresses[selectedCurrencyBond], parseUnits(faceValue.toString(), collateralDecimals).toString())
       .then(async(hres: any) => {
         if(hres?.status === 0) {
@@ -101,7 +102,7 @@ const AssetIssuanceForm: React.FC<ComponentDefaultprops> = ({web3, chainId, acco
   }
 
   const handleSubmitNewRWA = async(collateralDecimals: number, issueingDocUrl: string, bondTokenAddress: string) => {
-    const compoundAddress = "0x593cF24a170aE5359E14507EC2776D66f8494D40"  //chainContractAddresses["Compound"];
+    const compoundAddress = chainContractAddresses["Compound"];
     if(!compoundAddress) {
       console.error(`Compound/operator contract for chain id: ${chainId} does not exist`)
       return;
