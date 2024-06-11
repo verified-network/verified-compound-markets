@@ -8,6 +8,6 @@ const cWETHv3 = "0x61490650AbaA31393464C3f34E8B29cd1C44118E";
 
 module.exports = async function (deployer) {
   deployer.deploy(Compound, cUSDCv3).then(async () => {
-    // await deployer.deploy(Compound, cWETHv3);
+    await deployer.deploy(Compound, cWETHv3);
   });
 };
