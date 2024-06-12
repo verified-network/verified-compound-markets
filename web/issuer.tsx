@@ -43,11 +43,10 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
 
   useEffect(() => {
     const getRWAMarkets = async() => {
-      if(subgraphConfig && subgraphConfig[chainId!]?.subgraphUrl && web3 && signer) {
+      if(account && subgraphConfig && subgraphConfig[chainId!]?.subgraphUrl && web3 && signer) {
         const resData = await fetchRwas(subgraphConfig[chainId!].subgraphUrl, web3, signer);
-        const dataFmt = resData.filter((dt) => {return dt.IssuerAddress.toLowerCase() === account!.toLowerCase()});
-        console.log("fmt: ", dataFmt)
-        setData(resData)
+        const resFmt = resData.filter((dt) => {return dt.IssuerAddress.toLowerCase() === account.toLowerCase()})
+        setData(resFmt)
       }
     }
     getRWAMarkets()
