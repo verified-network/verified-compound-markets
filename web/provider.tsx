@@ -31,6 +31,7 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
   const [issuerBondIndex, setIssuerBondIndex] = useState<null | string>(null);
   const [data, setData] = useState<any>([]);
   const [enteredNumber, setEnteredNumber] = useState<number | ''>('');
+  const [investorBondBalance, setInvestorBondBalance] = useState<string>("0");
   const [selectedCollateral, setSelectedCollateral] = useState<string>("");
   const [collateralName, setCollateralName] = useState<string>("");
 
@@ -103,7 +104,10 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
               return <td key={rowIndex}>
                  <button
                   id="dropdown-button"
-                  onClick={() => {
+                  onClick={async() => {
+                    const bondContract = new ERC20(signer!, rowData["BondTokenAddress"]);
+                    const investorBondBalance = await bondContract.balanceOf(account!).then((res: any) => {return res?.response?.result[0]})
+                    setInvestorBondBalance(investorBondBalance)
                     document.getElementById(`dropdown-content-${rowIndex}`)?.classList.toggle("show-dropdown")
                   }}
                 className='sidebar-button button--large button--supply'>
@@ -116,12 +120,14 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
                 >
                   Provide Collateral
                 </div>
-                <div 
-                className="dropdown-action"
-                onClick={() => handleButtonClick(`Liquidate Collateral-${rowIndex}`)}   
-                >
-                  Liquidate Collateral
-                </div>
+                {investorBondBalance  !== "0" && (
+                  <div 
+                  className="dropdown-action"
+                  onClick={() => handleButtonClick(`Liquidate Collateral-${rowIndex}`)}   
+                  >
+                    Liquidate Collateral
+                  </div>
+                )}
                 <div
                  className="dropdown-action"
                 onClick={() => handleButtonClick(`Issuer Details-${rowIndex}`)}
@@ -143,11 +149,14 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
       setIsLoading(true)
       const bondERC20Contract = new ERC20(signer!, bondTokenAddress);
       const bondTokenContract = new Token(signer!, bondTokenAddress);
-      const investorBalance = await bondERC20Contract.balanceOf(account!).then((res: any) => {return Number(res.response.result)});
+      const investorBalance = await bondERC20Contract.balanceOf(account!).then((res: any) => { 
+        console.log("res:", res.response.result);
+        return res.response.result[0]
+      });
       if(investorBalance > 0) {
         const tokenDecimals = await bondERC20Contract.decimals().then((res: any) => {return Number(res.response.result)});
-        console.log("balance: ", parseUnits(investorBalance.toString(), tokenDecimals).toString())
-        await bondTokenContract.transferFrom(account!, bondTokenAddress, parseUnits(investorBalance.toString(), tokenDecimals).toString()).then((res: any) => {
+        console.log("balance: ", investorBalance.toString())
+        await bondTokenContract.transferFrom(account!, bondTokenAddress, investorBalance).then((res: any) => {
           if(res && res.status === 0 && res.response && res.response.hash) {
             console.log("Successful transfer from transaction with hash: ", res.response.hash)
             toast.success("Bond Liquidated succesfully")
