@@ -14,11 +14,11 @@ import { toast } from 'react-toastify';
 
 interface TableRow {
   "Asset": string;
-  "Issuer": string;
   "Collateral": string;
   "Sold Value": string;
   "Collateral Posted": string;
   "Borrowed": string;
+  "Borrowers": string;
   "APY": string;
   "Status": string;
   "Action": string;
@@ -43,9 +43,10 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
 
   useEffect(() => {
     const getRWAMarkets = async() => {
-      if(subgraphConfig && subgraphConfig[chainId!]?.subgraphUrl && web3 && signer) {
+      if(account && subgraphConfig && subgraphConfig[chainId!]?.subgraphUrl && web3 && signer) {
         const resData = await fetchRwas(subgraphConfig[chainId!].subgraphUrl, web3, signer);
-        setData(resData);
+        const resFmt = resData.filter((dt) => {return dt.IssuerAddress.toLowerCase() === account.toLowerCase()})
+        setData(resFmt)
       }
     }
     getRWAMarkets()
@@ -53,11 +54,11 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
 
   const headerNames: (keyof TableRow)[] = [
     'Asset',
-    'Issuer',
     'Collateral',
     'Sold Value',
     'Collateral Posted',
     'Borrowed',
+    'Borrowers',
     'APY',
     'Status',
     "Action"

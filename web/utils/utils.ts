@@ -202,11 +202,13 @@ export const fetchRwas = async (subgraphUrl: string, web3: any, signer: any) => 
     },
   })
     .then((res: any) => {
+      
       if (res.data.errors) {
         console.error("error while fetching Rwas: ", res.data.errors)
         return []
       } else {
         const allRwas = res.data.data.rwas;
+        // console.log("res...: ", allRwas)
         let data: any[] = [];
         allRwas.map((rwa: any) => {
           rwa.bond.bondIssues.map((bond: any) => {
@@ -226,6 +228,7 @@ export const fetchRwas = async (subgraphUrl: string, web3: any, signer: any) => 
                 "IssuerTotalIssuesRepaid": "0", //Todo: update this
                 "Collateral": web3.utils.hexToAscii(bond.collateralCurrency.toString()).replace(/\0/g, ""),
                 "CollateralName": bond.collateralCurrency.toString(),
+                "InvestorsCollateral": bond.collateralCurrency.toString(),
                 "BondTokenAddress": rwa.bond.token.toString(),
                 // "Face Value": rwa.faceValue.toString() === "0" ? rwa.faceValue.toString() : web3.utils.fromWei(rwa.faceValue.toString(), "ether"),
                 'Currency': web3.utils.hexToAscii(bond.bondName.toString()).replace(/\0/g, "").replace("VB", ""),
@@ -233,13 +236,14 @@ export const fetchRwas = async (subgraphUrl: string, web3: any, signer: any) => 
                 "Issued Value": bond.issuedAmount.toString() === "0"?  bond.issuedAmount.toString(): web3.utils.fromWei(bond.issuedAmount.toString(), "ether"),
                 'Issuing Docs': rwa.issuingDocs.toString().substring(0, 15) + "..." + rwa.issuingDocs.toString().substring(rwa.issuingDocs.toString().length - 5, rwa.issuingDocs.toString().length),
                 "DocUrl": rwa.issuingDocs.toString(),
-                "Borrowed": rwa.bond.bondPurchases.map((prch: any) =>{ return Number(web3.utils.fromWei(prch.purchasedAmount.toString(), "ether"))}).reduce((a:number , c: number) => {
+                "Borrowed": (rwa.bond.bondPurchases.map((prch: any) =>{ return Number(web3.utils.fromWei(prch.purchasedAmount.toString(), "ether"))}).reduce((a:number , c: number) => {
                   return a + c
-                }, 0),
+                }, 0)).toFixed(6),
+                "Borrowers": rwa.bond.bondPurchases.length,
                 "Repaid": "0", //Todo: update this
-                "Sold Value": rwa.bond.bondPurchases.map((prch: any) =>{ return Number(web3.utils.fromWei(prch.purchasedAmount.toString(), "ether"))}).reduce((a:number , c: number) => {
+                "Sold Value": (rwa.bond.bondPurchases.map((prch: any) =>{ return Number(web3.utils.fromWei(prch.purchasedAmount.toString(), "ether"))}).reduce((a:number , c: number) => {
                   return a + c
-                }, 0),
+                }, 0)).toFixed(6),
                 "Collateral Posted": bond.collateralAmount.toString() === "0"?  bond.collateralAmount.toString()
                 : web3.utils.fromWei(bond.collateralAmount.toString(), "ether"),
                 "Status": rwa.bond.bondRedemptions.filter((rmdBond: any) => rmdBond.id.toLowerCase() === bond.id.toLowerCase())?.redemptionAmount == bond.collateralAmount || 
