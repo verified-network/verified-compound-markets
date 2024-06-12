@@ -102,30 +102,31 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
                   Actions
                 </button>
                 <div id={`dropdown-content-${rowIndex}`} className="dropdown-content">
-                <div
-                 className="dropdown-action"
-                onClick={() => handleButtonClick(`Borrow-${rowIndex}`)}   
-                >
-                  Borrow
-                </div>
-                <div 
-                className="dropdown-action"
-                onClick={() => handleButtonClick(`Redeem Collateral-${rowIndex}`)}   
-                >
-                  Redeem Collateral
-                </div>
-                <div
-                 className="dropdown-action"
-                onClick={() => handleButtonClick(`Repay Loan-${rowIndex}`)}
-                >
-                  Repay Loan
-                </div>
-                <div
-                 className="dropdown-action"
-                onClick={() => handleButtonClick(`Reclaim Collateral-${rowIndex}`)}
-                >
-                  Reclaim Collateral
-                </div>
+                {rowData["Sold Value"] > 0 && (
+                  <div
+                  className="dropdown-action"
+                 onClick={() => handleButtonClick(`Borrow-${rowIndex}`)}   
+                 >
+                   Borrow
+                 </div>
+                )}
+                {rowData["Borrowed"] > 0 &&(
+                  <div
+                  className="dropdown-action"
+                 onClick={() => handleButtonClick(`Repay Loan-${rowIndex}`)}
+                 >
+                   Repay Loan
+                 </div>
+                )}
+                
+                {rowData["Collateral Posted"] > rowData["Sold Value"] &&(
+                  <div
+                  className="dropdown-action"
+                 onClick={() => handleButtonClick(`Reclaim Collateral-${rowIndex}`)}
+                 >
+                   Reclaim Collateral
+                 </div>
+                )}
                 <div
                  className="dropdown-action"
                 onClick={() => handleButtonClick(`Issuer Details-${rowIndex}`)}
@@ -147,10 +148,9 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
       setIsLoading(true)
       const bondERC20Contract = new ERC20(signer!, bondTokenAddress);
       const bondTokenContract = new Token(signer!, bondTokenAddress);
-      const issuerBalance = await bondERC20Contract.balanceOf(account!).then((res: any) => {return Number(res.response.result)});
+      const issuerBalance = await bondERC20Contract.balanceOf(account!).then((res: any) => {return res?.response?.result[0]});
       if(issuerBalance > 0) {
-        const tokenDecimals = await bondERC20Contract.decimals().then((res: any) => {return Number(res.response.result)});
-        await bondTokenContract.transferFrom(account!, bondTokenAddress, parseUnits(issuerBalance.toString(), tokenDecimals).toString()).then((res: any) => {
+        await bondTokenContract.transferFrom(account!, bondTokenAddress, issuerBalance.toString()).then((res: any) => {
           if(res?.status === 0 ) {
             console.log("Successful transfer from transaction with hash: ", res?.response?.hash)
             toast.success("Bond Reclaimed succesfully")
@@ -315,7 +315,7 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
       }
       
       //handle redeem collateral
-      if(popupAction.startsWith("Redeem Collateral")) {
+      if(popupAction.startsWith("Repay Loan")) {
         const bondIndex = popupAction.split("-")[1];
         const collateralAddress = selectedCollateral
         const bondTokenAddress = data[bondIndex].BondTokenAddress;
@@ -328,11 +328,76 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
           await collateralContract.approve(chainContractAddresses["BOND"][asset], parseUnits(enteredNumber.toString(), collateraldecimals).toString()).then(async(res: any) => {
             if(res?.status === 0) {
               console.log("Successful approve transaction with hash: ", res?.response?.hash)
+              toast.success("Approve Transaction Successful")
               console.log("name: ", collateralName, "add: ", collateralAddress, "amount: ", parseUnits(enteredNumber.toString(), collateraldecimals).toString())
-              await bondTokenContract.requestTransaction(parseUnits(enteredNumber.toString(), collateraldecimals).toString(), payer, collateralName, collateralAddress).then((_res: any) => {
+              await bondTokenContract.requestTransaction(parseUnits(enteredNumber.toString(), collateraldecimals).toString(), payer, collateralName, collateralAddress).then(async(_res: any) => {
                 if(_res?.status === 0) {
                   console.log("Successful request transaction with hash: ", _res?.response?.hash)
-                  //toast here
+                  toast.success("Transaction Succesful")
+                  const compoundAddress = chainContractAddresses["Compound"];
+                  if(!compoundAddress) {
+                    console.error(`Compound/operator contract for chain id: ${chainId} does not exist`)
+                  }else{
+                    const base = subgraphConfig[chainId!].baseToken
+                    const baseContract = new ERC20(signer!, base); 
+                    const baseDecimals= await baseContract.decimals().then((res: any) => {return Number(res?.response?.result)})
+                    const bondIndex = popupAction.split("-")[1];
+                    const assest = data[bondIndex].BondTokenAddress;
+                    let permissionHandled = false;
+                    const compoundExtAddress = subgraphConfig[chainId!]?.cUSDCExt;
+                    if(compoundExtAddress) {
+                      const compoundExtensionContract = new web3.eth.Contract(COMETABI, subgraphConfig[chainId!].cUSDCv3);
+                      const isPermitted = await compoundExtensionContract.methods.hasPermission(account, compoundAddress).call();
+                      if(!isPermitted) {
+                        await compoundExtensionContract.methods.allow(compoundAddress, true).send({from: account!}).then(() => {
+                          permissionHandled = true;
+                        }).catch((err: any) => {
+                          console.error("allow transaction failed with error: ", err)
+                          toast.error("Allow Operator Transaction failed")
+                          setIsLoading(false)
+                        })
+                      }else{
+                        permissionHandled = true;
+                      }
+                      if(permissionHandled) {
+                        return await baseContract.approve(subgraphConfig[chainId!]?.cUSDCv3, parseUnits(enteredNumber.toString(), baseDecimals).toString()).then(async(res: any) => {
+                          if(res?.status === 0) {
+                            toast.success("Approve Transaction Successful")
+                            //Todo: fix sdk and change to sdk
+                            const compoundContract = new web3.eth.Contract(OPERATORABI, compoundAddress);
+                            await compoundContract.methods.repayBase(assest, base, parseUnits(enteredNumber.toString(), baseDecimals).toString()).send({from: account!}).then((res: any) => {
+                              if(res && res?.status) {
+                                console.log("Successful repayBase transaction with hash: ", res?.response?.hash)
+                                toast.success("Loan Repaid Succesfully")
+                              }else{
+                                res && res.message ?
+                              console.error("Error from repay base: ", res.message)
+                              //Todo: toast here
+                              : console.error("Error from repay base: Transaction Failed")
+                              //Todo: toast here
+                              }
+                            }).catch((err: any) => {
+                              console.error("Error from repay base: ", err)
+                              toast.error("Transaction failed")
+                              setIsLoading(false)
+                            })
+                          }else{
+                            res && res.message ?
+                            console.error("Error from approve transaction: ", res?.message || res?.reason)
+                            //Todo: toast here
+                            : console.error("Error from approve: Transaction Failed")
+                            //Todo: toast here
+                            toast.error("Approve Transaction Failed")
+                            setIsLoading(false)
+                          }
+                        })
+                      }
+                    }else{
+                      console.error("Compound extension address not found for network")
+                      toast.error("Error with connected network. Change network and try again.")
+                      setIsLoading(false)
+                    }
+                  }
                 }else{
                   _res && _res.message ?
                 console.error("Error from request transaction: ", _res.message)
@@ -357,75 +422,6 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
         }
       }
       
-      //handle repay loan
-      if(popupAction.startsWith("Repay Loan")) {
-        const compoundAddress = chainContractAddresses["Compound"];
-        if(!compoundAddress) {
-          console.error(`Compound/operator contract for chain id: ${chainId} does not exist`)
-        }else{
-          const base = subgraphConfig[chainId!].baseToken
-          const baseContract = new ERC20(signer!, base); 
-          const baseDecimals= await baseContract.decimals().then((res: any) => {return Number(res?.response?.result)})
-          const bondIndex = popupAction.split("-")[1];
-          const assest = data[bondIndex].BondTokenAddress;
-          let permissionHandled = false;
-          const compoundExtAddress = subgraphConfig[chainId!]?.cUSDCExt;
-          if(compoundExtAddress) {
-            const compoundExtensionContract = new web3.eth.Contract(COMETABI, subgraphConfig[chainId!].cUSDCv3);
-            const isPermitted = await compoundExtensionContract.methods.hasPermission(account, compoundAddress).call();
-            if(!isPermitted) {
-              await compoundExtensionContract.methods.allow(compoundAddress, true).send({from: account!}).then(() => {
-                permissionHandled = true;
-              }).catch((err: any) => {
-                console.error("allow transaction failed with error: ", err)
-                toast.error("Allow Operator Transaction failed")
-                setIsLoading(false)
-              })
-            }else{
-              permissionHandled = true;
-            }
-            if(permissionHandled) {
-              return await baseContract.approve(subgraphConfig[chainId!]?.cUSDCv3, parseUnits(enteredNumber.toString(), baseDecimals).toString()).then(async(res: any) => {
-                if(res?.status === 0) {
-                  toast.success("Approve Transaction Successful")
-                  //Todo: fix sdk and change to sdk
-                  const compoundContract = new web3.eth.Contract(OPERATORABI, compoundAddress);
-                  await compoundContract.methods.repayBase(assest, base, parseUnits(enteredNumber.toString(), baseDecimals).toString()).send({from: account!}).then((res: any) => {
-                    console.log("Successful repayBase transaction with hash: ",)
-                    toast.success("Loan Repaid Succesfully")
-                    // if(res && res.status === 0 && res.response && res.response.hash) {
-                    //   console.log("Successful repayBase transaction with hash: ", res.response.hash)
-                    //   //toast here
-                    // }else{
-                    //   res && res.message ?
-                    // console.error("Error from repay base: ", res.message)
-                    // //Todo: toast here
-                    // : console.error("Error from repay base: Transaction Failed")
-                    // //Todo: toast here
-                    // }
-                  }).catch((err: any) => {
-                    console.error("Error from repay base: ", err)
-                    toast.error("Transaction failed")
-                    setIsLoading(false)
-                  })
-                }else{
-                  res && res.message ?
-                  console.error("Error from approve transaction: ", res?.message || res?.reason)
-                  //Todo: toast here
-                  : console.error("Error from approve: Transaction Failed")
-                  //Todo: toast here
-                  toast.error("Approve Transaction Failed")
-                  setIsLoading(false)
-                }
-              })
-            }
-          }else{
-            console.error("Compound extension address not found for network")
-            toast.error("Error with connected network. Change network and try again.")
-            setIsLoading(false)
-          }
-        }
-      }
   
       // Reset states after submission
       setShowPopup(false);
@@ -500,9 +496,7 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
 
         {showPopup && (
         <div className="popup">
-          {!popupAction.startsWith("Repay Loan") && (
-            <>
-            <h3>Select Collateral:</h3>
+          <h3>Select Collateral:</h3>
           <select
               value={collateralName}
               onChange={(e) => {
@@ -521,8 +515,6 @@ function Issuer({web3, chainId, account, signer, page, setPage, setIsLoading}: C
                 </option>
               ))}
             </select>
-            </>
-          )}
           <h3>Enter a number:</h3>
           <input
             type="number"
