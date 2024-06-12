@@ -199,7 +199,7 @@ function Providers({web3, account, chainId, signer, page, setPage, setIsLoading}
     }
   };
 
-  console.log("data: ", data)
+  // console.log("data: ", data)
 
   const handlePopupSubmit = async() => {
     // Handle the enteredNumber based on the popupAction (e.g., perform appropriate action)
