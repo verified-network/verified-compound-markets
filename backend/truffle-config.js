@@ -1,7 +1,5 @@
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 
-require("dotenv").config();
-
 const fs = require("fs");
 const mnemonic = fs.readFileSync(".secret").toString().trim();
 
@@ -56,14 +54,11 @@ module.exports = {
       skipDryRun: true,
     },
     sepolia: {
-      provider: () =>
-        new HDWalletProvider(
-          mnemonic,
-          "wss://sepolia.infura.io/ws/v3/8151436a27dd4cdab264fa3ebf60a090"
-        ), //test
+      provider: () => new HDWalletProvider(mnemonic, "wss://sepolia.drpc.org"), //test
       network_id: 11155111,
       //gas: 6721975,
       //gasPrice: 10000000000,
+      networkCheckTimeout: 10000,
       confirmations: 2,
       timeoutBlocks: 200,
       skipDryRun: true,
@@ -129,19 +124,19 @@ module.exports = {
       },
     },
   },
-  mocha: {
-    reporter: "eth-gas-reporter",
-    reporterOptions: {
-      currency: "USD",
-      coinmarketcap: "ffcb2325-818c-4d4d-9f38-ca5973a5f5ad",
-      //gasPrice : 5,
-      showTimeSpent: true,
-      excludeContracts: ["Migrations"],
-      src: "contracts",
-      url: "http://localhost:8545",
-      //outputFile : 'gas-report.txt'
-      showMethodSig: false,
-      onlyCalledMethods: true,
-    },
-  },
+  // mocha: {
+  //   reporter: "eth-gas-reporter",
+  //   reporterOptions: {
+  //     currency: "USD",
+  //     coinmarketcap: "ffcb2325-818c-4d4d-9f38-ca5973a5f5ad",
+  //     //gasPrice : 5,
+  //     showTimeSpent: true,
+  //     excludeContracts: ["Migrations"],
+  //     src: "contracts",
+  //     url: "http://localhost:8545",
+  //     //outputFile : 'gas-report.txt'
+  //     showMethodSig: false,
+  //     onlyCalledMethods: true,
+  //   },
+  // },
 };

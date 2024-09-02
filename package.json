@@ -36,9 +36,8 @@
     "@web3modal/wagmi": "^4.2.2",
     "axios": "^1.6.7",
     "browserify-zlib": "^0.2.0",
-    "comet": "https://github.com/compound-finance/comet.git#c54ccc62e06186bdf237048ac7c9f3ce34d813b4",
-    "compound-config": "https://github.com/compound-finance/compound-config.git#0815f079ebe6c7421361b3334f7b8eaab50722b0",
     "compound-styles": "https://github.com/compound-finance/compound-styles.git#fc29b8a832c698920f2fcf7a06d978c4580a48e1",
+    "eth-gas-reporter": "^0.2.27",
     "events": "^3.3.0",
     "framer-motion": "^11.2.10",
     "path-browserify": "^1.0.1",
@@ -74,10 +73,5 @@
     "typescript": "^5.3.2",
     "vendoza": "0.0.4",
     "vite": "^3.0.7"
-  },
-  "packageManager": "yarn@1.22.22",
-  "volta": {
-    "node": "20.13.1",
-    "yarn": "4.2.2"
   }
 }

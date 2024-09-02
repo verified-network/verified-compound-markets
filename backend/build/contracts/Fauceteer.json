@@ -1,0 +1,207 @@
+{
+  "contractName": "Fauceteer",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "BalanceTooLow",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "RequestedTooFrequently",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "TransferFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        }
+      ],
+      "name": "drip",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "metadata": "{\"compiler\":{\"version\":\"0.8.16+commit.07a7930e\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"BalanceTooLow\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"RequestedTooFrequently\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"TransferFailed\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"drip\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"project:/contracts/interfaces/Fauceteer.sol\":\"Fauceteer\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"project:/contracts/interfaces/Fauceteer.sol\":{\"keccak256\":\"0xcd698fc539b6a6050df7f6b32ca737032e1b64cb9806a888732bf9b7657b5b0b\",\"license\":\"BUSL-1.1\",\"urls\":[\"bzz-raw://6e3396838e12bb6a5cae1ea0d27edd51d3ae17865545cd430e25b4bb86aa9550\",\"dweb:/ipfs/QmbtRgR43pA3CyT4aTMTW7VS1CZeX6JTmTG4XDd7DfFGt4\"]}},\"version\":1}",
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "immutableReferences": {},
+  "generatedSources": [],
+  "deployedGeneratedSources": [],
+  "sourceMap": "",
+  "deployedSourceMap": "",
+  "source": "// SPDX-License-Identifier: BUSL-1.1\npragma solidity ^0.8.15;\n\ninterface Fauceteer {\n    /* errors */\n    error BalanceTooLow();\n    error RequestedTooFrequently();\n    error TransferFailed();\n\n    function drip(address token) external;\n}\n",
+  "sourcePath": "/home/mohzcrea8me/Projects/Verified/verified-compound-markets/backend/contracts/interfaces/Fauceteer.sol",
+  "ast": {
+    "absolutePath": "project:/contracts/interfaces/Fauceteer.sol",
+    "exportedSymbols": {
+      "Fauceteer": [
+        13
+      ]
+    },
+    "id": 14,
+    "license": "BUSL-1.1",
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 1,
+        "literals": [
+          "solidity",
+          "^",
+          "0.8",
+          ".15"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "37:24:0"
+      },
+      {
+        "abstract": false,
+        "baseContracts": [],
+        "canonicalName": "Fauceteer",
+        "contractDependencies": [],
+        "contractKind": "interface",
+        "fullyImplemented": false,
+        "id": 13,
+        "linearizedBaseContracts": [
+          13
+        ],
+        "name": "Fauceteer",
+        "nameLocation": "73:9:0",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "errorSelector": "a3281672",
+            "id": 3,
+            "name": "BalanceTooLow",
+            "nameLocation": "112:13:0",
+            "nodeType": "ErrorDefinition",
+            "parameters": {
+              "id": 2,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "125:2:0"
+            },
+            "src": "106:22:0"
+          },
+          {
+            "errorSelector": "c5c0d8f6",
+            "id": 5,
+            "name": "RequestedTooFrequently",
+            "nameLocation": "139:22:0",
+            "nodeType": "ErrorDefinition",
+            "parameters": {
+              "id": 4,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "161:2:0"
+            },
+            "src": "133:31:0"
+          },
+          {
+            "errorSelector": "90b8ec18",
+            "id": 7,
+            "name": "TransferFailed",
+            "nameLocation": "175:14:0",
+            "nodeType": "ErrorDefinition",
+            "parameters": {
+              "id": 6,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "189:2:0"
+            },
+            "src": "169:23:0"
+          },
+          {
+            "functionSelector": "67a5cd06",
+            "id": 12,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "drip",
+            "nameLocation": "207:4:0",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 10,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 9,
+                  "mutability": "mutable",
+                  "name": "token",
+                  "nameLocation": "220:5:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 12,
+                  "src": "212:13:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 8,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "212:7:0",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "211:15:0"
+            },
+            "returnParameters": {
+              "id": 11,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "235:0:0"
+            },
+            "scope": 13,
+            "src": "198:38:0",
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          }
+        ],
+        "scope": 14,
+        "src": "63:175:0",
+        "usedErrors": [
+          3,
+          5,
+          7
+        ]
+      }
+    ],
+    "src": "37:202:0"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.8.16+commit.07a7930e.Emscripten.clang"
+  },
+  "networks": {},
+  "schemaVersion": "3.4.16",
+  "updatedAt": "2024-08-31T00:05:26.148Z",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {},
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  }
+}

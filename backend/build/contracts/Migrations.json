@@ -12,8 +12,7 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function",
-      "constant": true
+      "type": "function"
     },
     {
       "inputs": [],
@@ -26,8 +25,7 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function",
-      "constant": true
+      "type": "function"
     },
     {
       "inputs": [
@@ -625,7 +623,7 @@
   "sourceMap": "66:320:0:-:0;;;90:33;;;-1:-1:-1;;;;;;90:33:0;113:10;90:33;;;66:320;;;;;;;;;;;;;;;;",
   "deployedSourceMap": "66:320:0:-:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;127:36;;;;;;;;;160:25:6;;;148:2;133:18;127:36:0;;;;;;;;90:33;;;;;-1:-1:-1;;;;;90:33:0;;;;;;-1:-1:-1;;;;;360:32:6;;;342:51;;330:2;315:18;90:33:0;196:203:6;281:103:0;;;;;;:::i;:::-;;:::i;:::-;;;225:5;;-1:-1:-1;;;;;225:5:0;211:10;:19;196:69;;;;-1:-1:-1;;;196:69:0;;791:2:6;196:69:0;;;773:21:6;830:2;810:18;;;803:30;-1:-1:-1;;;849:18:6;;;842:49;908:18;;196:69:0;;;;;;;;343:24:::1;:36:::0;281:103::o;404:180:6:-;463:6;516:2;504:9;495:7;491:23;487:32;484:52;;;532:1;529;522:12;484:52;-1:-1:-1;555:23:6;;404:180;-1:-1:-1;404:180:6:o",
   "source": "// SPDX-License-Identifier: MIT\npragma solidity >=0.4.22 <0.9.0;\n\ncontract Migrations {\n  address public owner = msg.sender;\n  uint public last_completed_migration;\n\n  modifier restricted() {\n    require(\n      msg.sender == owner,\n      \"Unauthorized access\"\n    );\n    _;\n  }\n\n  function setCompleted(uint completed) public restricted {\n    last_completed_migration = completed;\n  }\n}\n",
-  "sourcePath": "/home/mohzcrea9me/Verified/Tasks/VCM/verified-compound-markets/backend/contracts/Migrations.sol",
+  "sourcePath": "/home/mohzcrea8me/Projects/Verified/verified-compound-markets/backend/contracts/Migrations.sol",
   "ast": {
     "absolutePath": "project:/contracts/Migrations.sol",
     "exportedSymbols": {
@@ -1042,7 +1040,7 @@
     }
   },
   "schemaVersion": "3.4.16",
-  "updatedAt": "2024-06-10T19:48:48.794Z",
+  "updatedAt": "2024-08-30T20:47:17.830Z",
   "networkType": "ethereum",
   "devdoc": {
     "kind": "dev",
