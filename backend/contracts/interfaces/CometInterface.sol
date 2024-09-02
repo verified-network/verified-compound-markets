@@ -290,5 +290,5 @@ interface Comet {
         address asset
     ) external view returns (uint128);
 
-    function allow(address manager, bool isAllowed_) external;
+    function allow(address manager, bool isAllowed_) external; //from comet extension
 }

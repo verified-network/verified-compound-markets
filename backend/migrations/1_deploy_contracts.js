@@ -8,7 +8,7 @@ const cWETHv3 = "0x61490650AbaA31393464C3f34E8B29cd1C44118E";
 const cometUSDC = "0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e"; //cUSDCv3 on sepolia
 
 module.exports = async function (deployer) {
-  deployer.deploy(Compound, cometUSDC).then(async () => {
+  deployer.deploy(Compound, cUSDCv3).then(async () => {
     // await deployer.deploy(Compound, cWETHv3);
   });
 };

@@ -80,11 +80,11 @@ contract VerifiedMarkets {
                 faceValue > 0,
             "RWA submission : Invalid request"
         );
-        //verify bond's issuer is the caller
-        require(
-            Bond(bond).getIssuer() == msg.sender,
-            "RWA submission : Invalid issuer"
-        );
+        // //verify bond's issuer is the caller
+        // require(
+        //     Bond(bond).getIssuer() == msg.sender,
+        //     "RWA submission : Invalid issuer"
+        // );
         //if issuer has no RWA tied to this assest, create new RWA for the issuer's asset
         if (assets[msg.sender][asset].bond == address(0x0)) {
             RWA.Asset memory rwa = RWA.Asset({

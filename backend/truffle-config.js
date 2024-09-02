@@ -54,12 +54,13 @@ module.exports = {
       skipDryRun: true,
     },
     sepolia: {
-      provider: () => new HDWalletProvider(mnemonic, "wss://sepolia.drpc.org"), //test
+      provider: () =>
+        new HDWalletProvider(mnemonic, "https://rpc2.sepolia.org"), //test
       network_id: 11155111,
       //gas: 6721975,
       //gasPrice: 10000000000,
-      networkCheckTimeout: 10000,
-      confirmations: 2,
+      networkCheckTimeout: 999999,
+      // confirmations: 2,
       timeoutBlocks: 200,
       skipDryRun: true,
     },
@@ -108,9 +109,10 @@ module.exports = {
           "wss://base-sepolia.blastapi.io/dad6747f-f25d-42cb-bd8d-5f93f0962ac2"
         ),
       network_id: 84532,
-      confirmations: 2,
-      timeoutBlocks: 200,
-      skipDryRun: true,
+      // confirmations: 2,
+      // timeoutBlocks: 2000,
+      // skipDryRun: true,
+      networkCheckTimeout: 999999,
     },
   },
   compilers: {
