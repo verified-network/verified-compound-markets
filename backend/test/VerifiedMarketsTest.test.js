@@ -340,12 +340,12 @@ contract("Verifiedmarkets On Base Sepolia", (accounts) => {
   });
 
   it("Should post 0.000000002 WETH from Issuer To RWA2 as collateral", async () => {
-    const collateralAddress = "0xa035b9e130F2B1AedC733eEFb1C67Ba4c503491F"; //WBTC on base sepolia
+    const collateralAddress = "0x4200000000000000000000000000000000000006"; //WBTC on base sepolia
     const collateralContract = await ERC20.at(collateralAddress);
     const amountToPost =
       0.000000002 * 10 ** Number(await collateralContract.decimals()); //0.000000002 in WETH decimals
     await checkWithFaucet(
-      "WBTC",
+      "WETH",
       collateralAddress,
       collateralContract,
       amountToPost,
