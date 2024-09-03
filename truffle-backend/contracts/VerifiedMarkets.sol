@@ -134,7 +134,7 @@ contract VerifiedMarkets {
                 collateral
             );
             (bool success, ) = address(comet).staticcall(payload);
-            require(success, "Posting Collateral: Invalid collateral");
+            require(success, "Posting Collateral: Invalid collateral calll");
             //supply collateral on comet and verify supply cap is not breached
             comet.supplyFrom(msg.sender, msg.sender, collateral, amount);
             //create collateral
