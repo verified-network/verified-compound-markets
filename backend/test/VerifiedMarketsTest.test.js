@@ -5,10 +5,10 @@ const Faucet = artifacts.require("Fauceteer");
 const { Web3 } = require("web3");
 const truffleAssert = require("truffle-assertions");
 
-contract("Verifiedmarkets On Sepolia", (accounts) => {
+contract("Verifiedmarkets On Base Sepolia", (accounts) => {
   let verifiedMarketsCont, verifiedMarketsAddress, faucetContract, chainId;
   const web3 = new Web3(VerifiedMarkets.web3.currentProvider);
-  const cometUSDC = "0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e"; //cUSDCv3 on sepolia
+  const cometUSDC = "0x571621Ce60Cebb0c1D442B5afb38B1663C6Bf017"; //cUSDCv3 on base sepolia
   const contractOwner = accounts[0];
   const issuer = accounts[1];
   const nullAddress = "0x0000000000000000000000000000000000000000";
@@ -22,13 +22,14 @@ contract("Verifiedmarkets On Sepolia", (accounts) => {
   const maxUint256 = BigInt(
     "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
   );
+  const USDC = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"; //USDC on base sepolia
 
   before(async () => {
     chainId = await web3.eth.getChainId();
     assert.equal(
       chainId,
-      11155111,
-      `This test only works sepolia network(chainId: 11155111). run "truffle test --network sepolia" and try again`
+      84532,
+      `This test only works base sepolia network(chainId: 84532). run "truffle test --network baseSepolia" and try again`
     );
     assert.isTrue(
       accounts.length > 1,
@@ -305,7 +306,7 @@ contract("Verifiedmarkets On Sepolia", (accounts) => {
   });
 
   it("Should post 0.000001 WETH from Issuer To RWA1 as collateral", async () => {
-    const collateralAddress = "0x2D5ee574e710219a521449679A4A7f2B43f046ad"; //WETH on sepolia
+    const collateralAddress = "0x4200000000000000000000000000000000000006"; //WETH on base sepolia
     const collateralContract = await ERC20.at(collateralAddress);
     const amountToPost =
       0.000001 * 10 ** Number(await collateralContract.decimals()); //0.000001 in wei(since WETH is 18decimals)
@@ -338,13 +339,13 @@ contract("Verifiedmarkets On Sepolia", (accounts) => {
     );
   });
 
-  it("Should post 0.000000002 WBTC from Issuer To RWA2 as collateral", async () => {
-    const collateralAddress = "0xa035b9e130F2B1AedC733eEFb1C67Ba4c503491F"; //WBTC on sepolia
+  it("Should post 0.000000002 WETH from Issuer To RWA2 as collateral", async () => {
+    const collateralAddress = "0x4200000000000000000000000000000000000006"; //WBTC on base sepolia
     const collateralContract = await ERC20.at(collateralAddress);
     const amountToPost =
-      0.000000002 * 10 ** Number(await collateralContract.decimals()); //0.000000002 in WBTC decimals
+      0.000000002 * 10 ** Number(await collateralContract.decimals()); //0.000000002 in WETH decimals
     await checkWithFaucet(
-      "WBTC",
+      "WETH",
       collateralAddress,
       collateralContract,
       amountToPost,
@@ -369,6 +370,94 @@ contract("Verifiedmarkets On Sepolia", (accounts) => {
         );
       },
       "PostedCollateral should be emitted with right parameters/arguments"
+    );
+  });
+
+  it("Should borrow 0.0001 base(USDC) from RWA1", async () => {
+    const amountToBorrow = 0.0001 * 10 ** 6; //0.000001 in 6 decimals(since USDC is 6decimals)
+    const borrowBase = await verifiedMarketsCont.borrowBase(
+      securityAssest1,
+      amountToBorrow,
+      { from: issuer }
+    );
+    truffleAssert.eventEmitted(
+      borrowBase,
+      "Borrowed",
+      (data) => {
+        return (
+          data.borrower === issuer,
+          data.base.toLowerCase() === USDC.toLowerCase(),
+          Number(data.amount) === Number(amountToBorrow)
+        );
+      },
+      "borrowBases should be emitted with right parameters/arguments"
+    );
+  });
+
+  it("Should borrow 0.00003 base(USDC) from RWA2", async () => {
+    const amountToBorrow = 0.00003 * 10 ** 6; //0.000001 in 6 decimals(since USDC is 6decimals)
+    const borrowBase = await verifiedMarketsCont.borrowBase(
+      securityAssest2,
+      amountToBorrow,
+      { from: issuer }
+    );
+    truffleAssert.eventEmitted(
+      borrowBase,
+      "Borrowed",
+      (data) => {
+        return (
+          data.borrower === issuer,
+          data.base.toLowerCase() === USDC.toLowerCase(),
+          Number(data.amount) === Number(amountToBorrow)
+        );
+      },
+      "borrowBases should be emitted with right parameters/arguments"
+    );
+  });
+
+  it("Should repay 0.0001 base(USDC) to RWA1", async () => {
+    const amountToPay = 0.0001 * 10 ** 6; //0.000001 in 6 decimals(since USDC is 6decimals)
+    const baseContract = await ERC20.at(USDC);
+    await checkAllowance(baseContract, issuer);
+    const repayBase = await verifiedMarketsCont.repayBase(
+      securityAssest1,
+      amountToPay,
+      { from: issuer }
+    );
+    truffleAssert.eventEmitted(
+      repayBase,
+      "Repaid",
+      (data) => {
+        return (
+          data.borrower === issuer,
+          data.base.toLowerCase() === USDC.toLowerCase(),
+          Number(data.amount) === Number(amountToPay)
+        );
+      },
+      "repayBase should be emitted with right parameters/arguments"
+    );
+  });
+
+  it("Should repay 0.00002 base(USDC) to RWA2", async () => {
+    const amountToPay = 0.00002 * 10 ** 6; //0.000001 in 6 decimals(since USDC is 6decimals)
+    const baseContract = await ERC20.at(USDC);
+    await checkAllowance(baseContract, issuer);
+    const repayBase = await verifiedMarketsCont.repayBase(
+      securityAssest2,
+      amountToPay,
+      { from: issuer }
+    );
+    truffleAssert.eventEmitted(
+      repayBase,
+      "Repaid",
+      (data) => {
+        return (
+          data.borrower === issuer,
+          data.base.toLowerCase() === USDC.toLowerCase(),
+          Number(data.amount) === Number(amountToPay)
+        );
+      },
+      "repayBase should be emitted with right parameters/arguments"
     );
   });
 });
