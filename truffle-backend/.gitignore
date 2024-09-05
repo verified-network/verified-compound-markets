@@ -1,5 +1,4 @@
 *.env
 *.log
-*.secret
 build/
 node_modules

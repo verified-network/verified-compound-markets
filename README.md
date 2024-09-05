@@ -26,7 +26,7 @@ A few notes:
 - Any changes to web source code should auto-reload.
 
 
-  	##Frontend(Web Dapp) Workflow
+  	Frontend(Web Dapp) Workflow
 
     From the url:
     [Official Url](https://verified-markets.web.app/)
@@ -37,6 +37,20 @@ A few notes:
     1. The Investor Page: also the landing/home page. ends with `/` and includes a table showing all Bonds issued which investors can   purchase with collaterals that are accepted on compound. Investors can also reclaim collateral by liquidating bonds if issuers failed to repay them.
        
     2. The Issuer Page: ends with `/issue` allows issuers to issue bonds using RWA tokens as collateral. Once the bonds are sold to investors, issuers can borrow USDC or Ether from compound. Issuers can also redeem bonds by repaying investors.
+ 
+
+
+## Getting Started With The Backend(Smart Contract Tests)
+
+1. Run `cd backend` from root directory.
+2. Run `npm install` or `npm install --force` to install dependencies.
+3. Comment out line 85 to line 87 on VerifiedMarkets.sol file.
+4. Run `npm run test` to run Verified Markets smart contract testcases on base sepolia chain(84532).
+5. Incase of insufficient gas and ERC20:balance error:
+   1. contact Verified Network team to topup test wallets.
+   2. Manually topup wallets:
+      Contract Owner: `0xeDFFca9E6c29a9fB27de9B7054019A34407c1920` Topup base sepolia ETH
+      RWA Issuer: `0xa8BD9CdF1CC2F562B5c0342A1B7bC4692B1e3DC1` Topup base sepolia ETH and WETH: `0x4200000000000000000000000000000000000006`
 
 
 ## License
