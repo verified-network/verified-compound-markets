@@ -5,6 +5,7 @@
 pragma solidity ^0.8.16;
 
 interface Bond {
+    
     function getIssuer() external view returns (address);
 
     function transferToken(
@@ -34,4 +35,6 @@ interface Bond {
         bytes32 currency,
         address cashContract
     ) external returns (bool);
+    
+    
 }
