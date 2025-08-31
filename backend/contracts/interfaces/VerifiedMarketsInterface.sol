@@ -33,5 +33,5 @@ interface RWA {
 
     function borrowBase(address asset) external;
 
-    function repayBase(address asset, uint256 amount) external;
+    function repayBase(address asset, uint256 amount, address issuer, address factory) external;
 }
