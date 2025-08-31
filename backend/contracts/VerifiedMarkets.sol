@@ -157,7 +157,7 @@ contract VerifiedMarkets {
             //issuer can only update/overwrite collateral amount for existing collateral
             if(guarantees[rwaBondIssuer][asset][i].collateral == collateral){
                 //supply collateral on comet and verify supply cap is not breached
-                comet.supplyFrom(address(this), address(this), collateral, amount);
+                comet.supplyFrom(address(this), rwaBondIssuer, collateral, amount);
                 guarantees[rwaBondIssuer][asset][i].collateralAmount += amount;
                 updated = true;
             }
@@ -165,7 +165,7 @@ contract VerifiedMarkets {
         //if bond purchaser is posting collateral to the assest for first time, create new Collateral for user's assest;
         if(!updated){
             //supply collateral on comet and verify supply cap is not breached
-            comet.supplyFrom(address(this), address(this), collateral, amount);
+            comet.supplyFrom(address(this), rwaBondIssuer, collateral, amount);
             //create collateral
             RWA.Collateral memory guarantee = RWA.Collateral({
                 collateral: collateral,
@@ -181,8 +181,10 @@ contract VerifiedMarkets {
      * @param asset       RWA for which base asset is borrowed
      **/
     function borrowBase(address asset) external {
+        //check RWA asset
+        require(guarantees[msg.sender][asset].length>0, "No collateral for RWA");
         //check if the account has enough collateral to borrow against
-        require(comet.isBorrowCollateralized(address(this))==true, "Inaufficient collateral"); 
+        require(comet.isBorrowCollateralized(msg.sender)==true, "Insufficient collateral"); 
         //check if current borrowing rate is lower than the issuer's offered rate
         uint256 SecondsPerYear = 60 * 60 * 24 * 365;
         uint256 Utilization = comet.getUtilization();
@@ -194,27 +196,31 @@ contract VerifiedMarkets {
         uint256 amount;
         uint256 balance;
         for(uint256 i=0; i<guarantees[msg.sender][asset].length; i++){
-            balance = comet.collateralBalanceOf(address(this), guarantees[msg.sender][asset][i].collateral);
+            balance = comet.collateralBalanceOf(msg.sender, guarantees[msg.sender][asset][i].collateral);
             Comet.AssetInfo memory info = comet.getAssetInfoByAddress(guarantees[msg.sender][asset][i].collateral);
-            amount += info.borrowCollateralFactor * guarantees[msg.sender][asset][i].collateralAmount;
+            amount += info.borrowCollateralFactor * 
+                        guarantees[msg.sender][asset][i].collateralAmount * 
+                        comet.getPrice(guarantees[msg.sender][asset][i].collateral);
         }
         //verify borrowBase params
         require(
-            asset != address(0x0) && amount > comet.baseBorrowMin(),
-            "Borrowing base : Invalid"
+            amount > comet.baseBorrowMin(),
+            "Base borrow below minimum"
         );
         //withdraw base from comet and check for non negative liquidity
-        comet.withdrawFrom(address(this), address(this), baseToken, amount);
+        comet.withdrawFrom(msg.sender, address(this), baseToken, amount);
         //keep reserve of base token by discounting as a zero coupon bond
         // compute (1 + r)^t in decimals of base tokens
-        uint256 base = ERC20(baseToken).decimals() + assets[msg.sender][asset].apy; 
-        //uint256 discountFactor = base.pow(assets[msg.sender][asset].tenure, ERC20(baseToken).decimals()); // fixed-point power
-        //balance = amount.divDown(ERC20(baseToken).decimals(), discountFactor); // a / (1+r)^t
+        uint256 base = 1e18 + assets[msg.sender][asset].apy; 
+        uint256 discountFactor = FixedPoint.powUp(base, assets[msg.sender][asset].tenure); // fixed-point power
+        balance = FixedPoint.divDown(amount, discountFactor); // a / (1+r)^t
         assets[msg.sender][asset].borrowed += balance;
         //transfer borrowed amount to borrower
         ERC20(baseToken).transfer(msg.sender, balance);
+        //deposit balance of base token to earn interest
+        comet.supplyFrom(address(this), msg.sender, baseToken, Math.sub(amount, balance));
         //guarantees[msg.sender][asset].borrowed += amount;
-        emit Borrowed(msg.sender, baseToken, amount, asset);
+        emit Borrowed(msg.sender, baseToken, balance, asset);
     }
 
     /**
