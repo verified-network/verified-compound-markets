@@ -7,7 +7,7 @@ interface RWA {
         address bond;
         uint256 apy;
         string issuingDocs;
-        uint256 faceValue;
+        uint256 couponFrequency;
         uint256 tenure;
         uint256 borrowed;
     }
@@ -15,6 +15,11 @@ interface RWA {
     struct Collateral {
         address collateral;
         uint256 collateralAmount;
+    }
+
+    struct BalanceSnapshot {
+        uint256 timestamp;
+        uint256 balance; // base token balance
     }
 
     function submitNewRWA(
@@ -33,5 +38,9 @@ interface RWA {
 
     function borrowBase(address asset) external;
 
-    function repayBase(address asset, uint256 amount, address issuer, address factory) external;
+    function repayBase(address asset, uint256 amount) external;
+
+    function repayLenders(address asset) external;
+
+    function withdrawCollateral(address bond, address issuer, address factory) external;
 }
