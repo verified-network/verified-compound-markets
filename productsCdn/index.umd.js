@@ -48364,8 +48364,12 @@
     }
   };
 
-  const getIpfsUrlFromHash = (ipfsHash) => {
+  const getIpfsUrlFromHashPinata = (ipfsHash) => {
     return `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+  };
+
+  const getIpfsUrlFromHash = (ipfsHash) => {
+    return `https://ipfs.io/ipfs/ipfs/${ipfsHash}`;
   };
 
   const readIpfsDocumentFromHash = async (ipfsHash) => {
@@ -48382,7 +48386,21 @@
       });
     } catch (err) {
       console.error("Error while reading ipfs file: ", err?.message);
-      return {};
+      try {
+        return await axios({
+          method: "GET",
+          url: getIpfsUrlFromHashPinata(ipfsHash),
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+        }).then((res) => {
+          return res.data;
+        });
+      } catch (err) {
+        console.error("Error while reading ipfs file: ", err?.message);
+        return {};
+      }
     }
   };
 
