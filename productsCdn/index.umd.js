@@ -48369,7 +48369,7 @@
   };
 
   const getIpfsUrlFromHash = (ipfsHash) => {
-    return `https://ipfs.io/ipfs/ipfs/${ipfsHash}`;
+    return `https://ipfs.io/ipfs/${ipfsHash}`;
   };
 
   const readIpfsDocumentFromHash = async (ipfsHash) => {
