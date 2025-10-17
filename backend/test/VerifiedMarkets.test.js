@@ -10,7 +10,7 @@ const ERC20 = require("../artifacts/contracts/interfaces/IERC20.sol/IERC20.json"
         //     Bond(bond).getIssuer() == msg.sender,
         //     "RWA submission : Invalid issuer"
         // ); 
-        This tests does not include Bond related test(s).
+        These tests do not include Bond related test(s).
  * @notice  This Tests run on baseSepolia only any other chain/network will not work. 
  * @notice  If Tests failed with insufficient gas or ERC20:balance error reach out to Verified Network team.
  **/
