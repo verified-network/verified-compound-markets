@@ -157,6 +157,7 @@ contract VerifiedMarkets is ReentrancyGuard {
         Comet.AssetInfo memory info = comet.getAssetInfoByAddress(collateral);
         require(info.supplyCap > SafeCast.toUint128(amount) + totalSupply, "Collateral cap");
         bool updated = false;
+        ERC20(collateral).approve(address(comet), amount);
         //issuer can only update collateral amount for existing collateral
         if(guarantees[rwaBondIssuer][asset].collateral == collateral){
             //supply collateral on comet and verify supply cap is not breached
@@ -189,20 +190,19 @@ contract VerifiedMarkets is ReentrancyGuard {
         address bond = assets[msg.sender][asset].bond;
         //check if the account has enough collateral to borrow against
         require(comet.isBorrowCollateralized(bond)==true, "No collateral"); 
-        //check if current borrowing rate is lower than the issuer's offered rate
-        uint256 SecondsPerYear = 60 * 60 * 24 * 365;
-        uint256 BorrowRate = comet.getBorrowRate(comet.getUtilization());
-        uint256 BorrowAPR = BorrowRate / (10 ^ 18) * SecondsPerYear * 100;
+        //check if current borrowing rate is lower than the issuer's offered rate  
+        uint256 SecondsPerYear = 31_557_600 * 1e18;
+        uint256 BorrowRate = comet.getBorrowRate(comet.getUtilization()); 
+        uint256 BorrowAPR = BorrowRate  * SecondsPerYear / 1e18;
         require(assets[msg.sender][asset].apy >= BorrowAPR, "Borrow APY");
         address baseToken = comet.baseToken();
         //determine amount that can be borrowed
-        uint256 amount;
         uint256 balance;
         balance = comet.collateralBalanceOf(bond, guarantees[msg.sender][asset].collateral);
         Comet.AssetInfo memory info = comet.getAssetInfoByAddress(guarantees[msg.sender][asset].collateral);
-        amount += info.borrowCollateralFactor * 
-                    guarantees[msg.sender][asset].collateralAmount * 
-                    comet.getPrice(guarantees[msg.sender][asset].collateral);
+        uint256 collateralUsd =  guarantees[msg.sender][asset].collateralAmount *  comet.getPrice(info.priceFeed) / info.scale;
+        uint256 _amount = info.borrowCollateralFactor * collateralUsd * comet.baseScale() / 1e18; // borrowCollateralFactor is 18 decimals
+        uint256 amount = _amount / comet.getPrice(comet.baseTokenPriceFeed()); //collateralUsd was in 8 decimals since getPrice is 8 decimals
         //verify borrowBase params
         require(
             amount > comet.baseBorrowMin(),
@@ -218,12 +218,14 @@ contract VerifiedMarkets is ReentrancyGuard {
         assets[msg.sender][asset].borrowed += balance;
         //transfer borrowed amount to borrower
         ERC20(baseToken).transfer(msg.sender, balance);
+        ERC20(baseToken).approve(address(comet), Math.sub(amount, balance));
         //deposit balance of base token to earn interest
         comet.supplyFrom(address(this), bond, baseToken, Math.sub(amount, balance));
         //take a snapshot of base balance for the account
         balanceSnapshots[bond].push(RWA.BalanceSnapshot(block.timestamp, comet.borrowBalanceOf(bond)));
         emit Borrowed(msg.sender, baseToken, balance, asset);
     }
+
 
     /**
      * @notice Called by RWA issuer to repay base asset to Compound and withdraw collateral posted earlier
@@ -243,8 +245,8 @@ contract VerifiedMarkets is ReentrancyGuard {
         address collateral = guarantees[msg.sender][asset].collateral;
         //withdraw collateral from comet check for non negative liquidity
         comet.withdrawFrom(
-            msg.sender,
             bond,
+            address(this),
             collateral,
             guarantees[msg.sender][asset].collateralAmount
         );
@@ -262,7 +264,7 @@ contract VerifiedMarkets is ReentrancyGuard {
         require(block.timestamp >= Math.add(timeOfIssue, Factory(factory).getBondTerm(bond)), "Invalid redemption");
         ( , , bytes32 collateralName, ) = BondIssuer(issuer).getBondPurchases(msg.sender, bond);
         address collateral = Factory(factory).getCurrencyToken(collateralName);
-        ERC20(collateral).transfer(msg.sender, deposits[msg.sender][bond][collateral]);
+        ERC20(collateral).transfer(bond, deposits[msg.sender][bond][collateral]);
         deposits[msg.sender][bond][collateral] = 0;
     }
 
@@ -285,3 +287,16 @@ contract VerifiedMarkets is ReentrancyGuard {
     }
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+

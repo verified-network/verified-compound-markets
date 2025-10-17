@@ -10,7 +10,8 @@
     "web:build": "tsc && vite build",
     "web:deploy": "tsc && vite build && node script/ipfs.js",
     "web:preview": "vite preview",
-    "web:test": "jest"
+    "web:test": "jest",
+    "build:cdn": "npx rollup -c"
   },
   "dependencies": {
     "@apollo/client": "^3.8.7",
@@ -34,12 +35,13 @@
     "@web3-react/types": "8.0.20-beta.0",
     "@web3-react/url": "8.0.25-beta.0",
     "@web3modal/wagmi": "^4.2.2",
-    "axios": "^1.6.7",
+    "axios": "^1.12.2",
     "browserify-zlib": "^0.2.0",
     "compound-styles": "https://github.com/compound-finance/compound-styles.git#fc29b8a832c698920f2fcf7a06d978c4580a48e1",
     "eth-gas-reporter": "^0.2.27",
     "events": "^3.3.0",
     "framer-motion": "^11.2.10",
+    "multiformats": "^13.4.1",
     "path-browserify": "^1.0.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -51,9 +53,11 @@
     "util": "^0.12.5",
     "viem": "2.x",
     "wagmi": "^2.9.6",
-    "web3": "^4.9.0"
+    "web3": "^4.16.0"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-node-resolve": "^16.0.1",
     "@testing-library/jest-dom": "^5.16.2",
     "@testing-library/react": "^13.3.0",
     "@testing-library/user-event": "^14.5.1",
@@ -65,8 +69,9 @@
     "@vitejs/plugin-react": "^2.0.1",
     "@web3-react/types": "8.0.20-beta.0",
     "eslint": "8.9.0",
-    "ethers": "^5.6.9",
+    "ethers": "^5.8.0",
     "jest": "^28.0.8",
+    "rollup": "^4.52.3",
     "sass": "^1.49.8",
     "solhint": "^3.3.6",
     "ts-jest": "^29.1.1",

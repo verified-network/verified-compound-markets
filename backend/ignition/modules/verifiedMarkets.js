@@ -1,6 +1,7 @@
 const { buildModule } = require("@nomicfoundation/hardhat-ignition/modules");
 
 const cUSDCv3 = "0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e"; //cUSDCV3 on sepolia
+const cWETHv3 = "0x2943ac1216979aD8dB76D9147F64E61adc126e96"; //cWETHv3 on sepolia
 
 module.exports = buildModule("VerifiedMarketsModule", (m) => {
   const comet = m.getParameter("comet", cUSDCv3);

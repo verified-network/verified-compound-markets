@@ -4,10 +4,19 @@ const mnemonic = fs.readFileSync(".secret").toString().trim();
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  solidity: "0.8.24",
+  solidity: {
+    version: "0.8.24",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+      viaIR: true,
+    },
+  },
   networks: {
     sepolia: {
-      url: "https://rpc.sepolia.org",
+      url: "https://eth-sepolia.public.blastapi.io",
       accounts: {
         mnemonic: mnemonic,
       },
