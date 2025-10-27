@@ -48282,6 +48282,7 @@
       vaultSubgraphUrl: `https://gateway.thegraph.com/api/b8a85dbf6f1f1111a5d83b479ee31262/subgraphs/id/HESgHTG2RE8F74MymKrdXKJw2u4s8YBJgbCjHuzhpXeC`,
       walletSubgraphUrl: `https://gateway.thegraph.com/api/b8a85dbf6f1f1111a5d83b479ee31262/subgraphs/id/2aGD2WDR6ncrTvGU4wEaME2Ywke1ookuNucMNJmcnrz5`,
       rpcUrl: `https://base-mainnet.public.blastapi.io`,
+      pinataUrl: "https://sapphire-petite-hyena-315.mypinata.cloud",
     },
 
     1: {
@@ -48290,6 +48291,7 @@
       vaultSubgraphUrl:
         "https://api.studio.thegraph.com/query/77016/vault-mainnet/version/latest",
       walletSubgraphUrl: `https://api.studio.thegraph.com/query/77016/wallet-mainnet/version/latest`,
+      pinataUrl: "https://sapphire-petite-hyena-315.mypinata.cloud",
     },
     100: {
       chainId: 100,
@@ -48298,18 +48300,21 @@
         "https://api.studio.thegraph.com/query/77016/vault-gnosis/version/latest",
       walletSubgraphUrl:
         "https://api.studio.thegraph.com/query/77016/wallet-gnosis/version/latest",
+      pinataUrl: "https://crimson-golden-peafowl-583.mypinata.cloud",
     },
     8453: {
       chainId: 8453,
       name: "Base Mainnet",
       vaultSubgraphUrl: `https://gateway.thegraph.com/api/b8a85dbf6f1f1111a5d83b479ee31262/subgraphs/id/HESgHTG2RE8F74MymKrdXKJw2u4s8YBJgbCjHuzhpXeC`,
       walletSubgraphUrl: `https://gateway.thegraph.com/api/b8a85dbf6f1f1111a5d83b479ee31262/subgraphs/id/2aGD2WDR6ncrTvGU4wEaME2Ywke1ookuNucMNJmcnrz5`,
+      pinataUrl: "https://sapphire-petite-hyena-315.mypinata.cloud",
     },
     11155111: {
       chainId: 11155111,
       name: "Sepolia Test Network",
       vaultSubgraphUrl: `https://gateway.thegraph.com/api/b8a85dbf6f1f1111a5d83b479ee31262/subgraphs/id/BZYwDU6CtLq1GBwCaGUZBU4KcQk9CAtPDkEY4LAKfoJN`,
       walletSubgraphUrl: `https://gateway.thegraph.com/api/b8a85dbf6f1f1111a5d83b479ee31262/subgraphs/id/6Qxzqb6J12vxKqgaGmCopuQH6bzGhAzYz45bRzPs2EiG`,
+      pinataUrl: "https://crimson-golden-peafowl-583.mypinata.cloud",
     },
   };
 
@@ -48372,11 +48377,15 @@
     return `https://ipfs.io/ipfs/${ipfsHash}`;
   };
 
-  const readIpfsDocumentFromHash = async (ipfsHash) => {
+  const getDedicatedIpfsUrlFromHash = (chainId, ipfsHash) => {
+    return `${chainDetails[chainId]?.pinataUrl}/ipfs/${ipfsHash}`;
+  };
+
+  const readIpfsDocumentFromHash = async (ipfsHash, chainId) => {
     try {
       return await axios({
         method: "GET",
-        url: getIpfsUrlFromHash(ipfsHash),
+        url: getDedicatedIpfsUrlFromHash(chainId, ipfsHash),
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
@@ -48389,7 +48398,7 @@
       try {
         return await axios({
           method: "GET",
-          url: getIpfsUrlFromHashPinata(ipfsHash),
+          url: getIpfsUrlFromHash(ipfsHash),
           headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
@@ -48399,7 +48408,21 @@
         });
       } catch (err) {
         console.error("Error while reading ipfs file: ", err?.message);
-        return {};
+        try {
+          return await axios({
+            method: "GET",
+            url: getIpfsUrlFromHashPinata(ipfsHash),
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+          }).then((res) => {
+            return res.data;
+          });
+        } catch (err) {
+          console.error("Error while reading ipfs file: ", err?.message);
+          return {};
+        }
       }
     }
   };
@@ -48613,13 +48636,15 @@
         return [Date.UTC(year, month - 1, day), Number(price.toFixed(6))];
       });
 
-  const getOfferingDocData = async (ipfsHash) => {
+  const getOfferingDocData = async (ipfsHash, chainId) => {
     const validHash = ipfsHash?.find(
       (rest) =>
         !rest.endsWith("0000") && convertBytes32ToIpfsHash(rest)?.length > 0
     );
     const convertedHash = validHash ? convertBytes32ToIpfsHash(validHash) : null;
-    return convertedHash ? await readIpfsDocumentFromHash(convertedHash) : null;
+    return convertedHash
+      ? await readIpfsDocumentFromHash(convertedHash, chainId)
+      : null;
   };
 
   const maybeDelay = async (shouldDelay, delayTime) => {
@@ -48750,7 +48775,8 @@
             currentPrice = prices.length ? prices[0][1] : "0.00";
 
             offeringDocData = await getOfferingDocData(
-              fetchedSecurityDetails[0]?.restrictions
+              fetchedSecurityDetails[0]?.restrictions,
+              chainId
             );
           }
 
@@ -48881,7 +48907,8 @@
             : "0.00";
 
           const offeringDocData = await getOfferingDocData(
-            fetchedSecurityDetails[0]?.restrictions
+            fetchedSecurityDetails[0]?.restrictions,
+            chainId
           );
 
           const priceChartData = Array.from(
