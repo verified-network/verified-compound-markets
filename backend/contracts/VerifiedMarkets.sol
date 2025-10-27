@@ -191,7 +191,7 @@ contract VerifiedMarkets is ReentrancyGuard {
         //check if the account has enough collateral to borrow against
         require(comet.isBorrowCollateralized(bond)==true, "No collateral"); 
         //check if current borrowing rate is lower than the issuer's offered rate  
-        uint256 SecondsPerYear = 31_557_600 * 1e18;
+        uint256 SecondsPerYear = 31_536_000 * 1e18;
         uint256 BorrowRate = comet.getBorrowRate(comet.getUtilization()); 
         uint256 BorrowAPR = BorrowRate  * SecondsPerYear / 1e18;
         require(assets[msg.sender][asset].apy >= BorrowAPR, "Borrow APY");
@@ -220,7 +220,7 @@ contract VerifiedMarkets is ReentrancyGuard {
         ERC20(baseToken).transfer(msg.sender, balance);
         ERC20(baseToken).approve(address(comet), Math.sub(amount, balance));
         //deposit balance of base token to earn interest
-        comet.supplyFrom(address(this), bond, baseToken, Math.sub(amount, balance));
+        comet.supplyFrom(address(this), address(this), baseToken, Math.sub(amount, balance));
         //take a snapshot of base balance for the account
         balanceSnapshots[bond].push(RWA.BalanceSnapshot(block.timestamp, comet.borrowBalanceOf(bond)));
         emit Borrowed(msg.sender, baseToken, balance, asset);
@@ -235,12 +235,37 @@ contract VerifiedMarkets is ReentrancyGuard {
     function repayBase(address asset, uint256 amount) nonReentrant external {
         //verify repayBase params
         address bond = assets[msg.sender][asset].bond;
-        require(bond != address(0x0), "Repaying Base");        
-        //supply base on comet
+        require(bond != address(0x0), "Invalid Bond");  
+        uint256 borrowed = assets[msg.sender][asset].borrowed;      
+        require(borrowed > 0, "Invalid Borrowed");  
+        // compute (1 + r)^t in decimals of base tokens
+        uint256 investedAmount;
+        uint256 base = 1e18 + assets[msg.sender][asset].apy; // 1 + r
+        uint256 growthFactor = FixedPoint.powUp(base, assets[msg.sender][asset].tenure); // (1 + r)^t
+        if(borrowed >= amount) {
+             investedAmount = FixedPoint.mulUp(amount, growthFactor); // balance * (1 + r)^t
+        }else{
+            investedAmount = FixedPoint.mulUp(borrowed, growthFactor);
+        }
         address baseToken = comet.baseToken();
+        //pay back base token from issuer to comet
         comet.supplyFrom(msg.sender, bond, baseToken, amount);
+        //withdraw invested base token from comet to this address
+        comet.withdrawFrom(
+            address(this),
+            address(this),
+            baseToken,
+            investedAmount
+        );
+        //pay back invested base token from this contract
+        ERC20(baseToken).approve(address(comet), investedAmount);
+        comet.supplyFrom(address(this), bond, baseToken, investedAmount);
         //update issuer's borrowed amount
-        assets[msg.sender][asset].borrowed -= amount;
+        if(borrowed >= amount) {
+           assets[msg.sender][asset].borrowed -= amount;
+        }else{
+            assets[msg.sender][asset].borrowed = 0;
+        }
         //withdraw collateral
         address collateral = guarantees[msg.sender][asset].collateral;
         //withdraw collateral from comet check for non negative liquidity
