@@ -64,3 +64,12 @@ export default defineConfig({
     },
   },
 });
+
+
+function getBondPurchases(address purchaser, address bondToken) external view returns(uint256, uint256, bytes32, uint256){
+          return (issues[purchaser][bondToken].purchasedIssueAmount,
+                  issues[purchaser][bondToken].paidInAmount,
+                  issues[purchaser][bondToken].paidInCurrency,
+                  issues[purchaser][bondToken].timeIssuedOrSubscribed);
+  
+    }
