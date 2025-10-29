@@ -4,10 +4,13 @@ pragma solidity ^0.8.16;
 interface RWA {
 
     struct Asset {
+        address asset;
         address bond;
+        address collateral;
         uint256 apy;
         string issuingDocs;
         uint256 couponFrequency;
+        uint256 faceValue;
         uint256 tenure;
         uint256 borrowed;
     }
