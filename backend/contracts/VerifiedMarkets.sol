@@ -85,12 +85,14 @@ contract VerifiedMarkets is ReentrancyGuard {
 
     /**
      * @notice RWA issuer submits asset details and issued bond that can be purchased to provide collateral to Compound
-     * @param asset       RWA for which bond is issued
-     * @param bond        address of bond 
-     * @param apy         interest rate paid on bond
-     * @param issuingDocs ipfs reference for RWA docs
-     * @param frequency   frequency at which interest coupon on bond is paid to bond purchasers (lenders)
-     * @param factory     address of factory contract to get bond term in milliseconds
+     * @param asset       asset for which bond is issued(e.g Verified Security)
+     * @param collateral  address of accepted collateral for this RWA(e.g WETH, WBTC e.t.c)
+     * @param bond        address of RWA issued bond
+     * @param apy         interest rate paid on bond yearly in fraction scaled to 18 decimals(e.g 5% =(5/ 100) * 10 ** 18)
+     * @param issuingDocs ipfs reference for RWA docs(e.g Qmrtys.....)
+     * @param frequency   time frequency at which interest coupon on bond is paid to bond purchasers (e.g every month, every hour )
+     * @param faceValue   RWA loan value in USD scaled to 18 decimals(e.g 5000 USD = (5000 * 10 ** 18))
+     * @param factory     address of factory contract used to set issued bond time in seconds
      **/
     function submitNewRWA(
         address asset,
@@ -112,6 +114,10 @@ contract VerifiedMarkets is ReentrancyGuard {
                 tenure > 0 && faceValue > 0, 
             "Invalid request"
         );
+        uint256 secondsPerYear = 31_536_000 * 1e18;
+        uint256 borrowRate = comet.getBorrowRate(comet.getUtilization()); 
+        uint256 borrowAPR = borrowRate  * secondsPerYear / 1e18;
+        require(apy >= borrowAPR, "Invalid APY");
         //if issuer has no bond issued for this RWA, issue bond
         if (assets[msg.sender][bond].asset == address(0x0)) {
             //record issued bond data
@@ -208,10 +214,10 @@ contract VerifiedMarkets is ReentrancyGuard {
         require(guarantees[msg.sender][bond].collateralAmount > 0, "No collateral"); 
         require(comet.isBorrowCollateralized(bond)==true, "No collateral");  //this will always be true till calculation for borrow is done???
         //check if current borrowing rate is lower than the issuer's offered rate  
-        uint256 SecondsPerYear = 31_536_000 * 1e18;
-        uint256 BorrowRate = comet.getBorrowRate(comet.getUtilization()); 
-        uint256 BorrowAPR = BorrowRate  * SecondsPerYear / 1e18;
-        require(assets[msg.sender][bond].apy >= BorrowAPR, "Borrow APY");
+        uint256 secondsPerYear = 31_536_000 * 1e18;
+        uint256 borrowRate = comet.getBorrowRate(comet.getUtilization()); 
+        uint256 borrowAPR = borrowRate  * secondsPerYear / 1e18;
+        require(assets[msg.sender][bond].apy >= borrowAPR, "Invalid APY");
         address baseToken = comet.baseToken();
         //determine amount that can be borrowed
         Comet.AssetInfo memory info = comet.getAssetInfoByAddress(guarantees[msg.sender][bond].collateral);
@@ -347,7 +353,7 @@ contract VerifiedMarkets is ReentrancyGuard {
         } 
     }
 
-    //claim rewards???
+    //TODO: add claim rewards function for contract issuer to withdraw/claim reward accumulated on baseToken supply???
 
 }
 
