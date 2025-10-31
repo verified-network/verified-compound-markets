@@ -22,7 +22,8 @@ interface RWA {
 
     struct BalanceSnapshot {
         uint256 timestamp;
-        uint256 balance; // base token balance
+        uint256 balance; // base token borrowed balance
+        uint256 invested; //invested base token without interes
     }
 
     function submitNewRWA(
