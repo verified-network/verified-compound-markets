@@ -4,10 +4,13 @@ pragma solidity ^0.8.16;
 interface RWA {
 
     struct Asset {
+        address asset;
         address bond;
+        address collateral;
         uint256 apy;
         string issuingDocs;
         uint256 couponFrequency;
+        uint256 faceValue;
         uint256 tenure;
         uint256 borrowed;
     }
@@ -19,7 +22,8 @@ interface RWA {
 
     struct BalanceSnapshot {
         uint256 timestamp;
-        uint256 balance; // base token balance
+        uint256 balance; // base token borrowed balance
+        uint256 invested; //invested base token without interes
     }
 
     function submitNewRWA(

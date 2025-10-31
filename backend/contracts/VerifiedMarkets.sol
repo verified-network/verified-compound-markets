@@ -39,22 +39,27 @@ contract VerifiedMarkets is ReentrancyGuard {
     mapping(address => mapping(address => mapping(address => uint256))) private deposits;
 
     //mapping bond issuer to balance snapshots
-    mapping(address => RWA.BalanceSnapshot[]) private balanceSnapshots;
+    mapping(address => RWA.BalanceSnapshot) private balanceSnapshots;
+
+    //tracks total baseToken supplied by this contract to comet without interest;
+    uint256 private totalBaseSupplied;
 
     //events
     event NewRWA(
         address indexed issuer,
         address indexed asset,
+        address collateral,
         address bond,
         uint256 apy,
         string issuingDocs,
         uint256 couponFrequency,
+        uint256 faceValue,
         uint256 tenure
     );
 
     event PostedCollateral(
         address indexed issuer,
-        address indexed asset,
+        address indexed bond,
         address collateral,
         uint256 amount
     );
@@ -63,13 +68,14 @@ contract VerifiedMarkets is ReentrancyGuard {
         address indexed borrower,
         address indexed base,
         uint256 amount,
-        address asset
+        address bond
     );
     
     event Repaid(
         address indexed borrower,
         address indexed base,
-        uint256 amount
+        uint256 amount,
+        address bond
     );    
 
     /**
@@ -82,45 +88,56 @@ contract VerifiedMarkets is ReentrancyGuard {
 
     /**
      * @notice RWA issuer submits asset details and issued bond that can be purchased to provide collateral to Compound
-     * @param asset       RWA for which bond is issued
-     * @param bond        address of bond 
-     * @param apy         interest rate paid on bond
-     * @param issuingDocs ipfs reference for RWA docs
-     * @param frequency   frequency at which interest coupon on bond is paid to bond purchasers (lenders)
-     * @param factory     address of factory contract to get bond term in milliseconds
+     * @param asset       asset for which bond is issued(e.g Verified Security)
+     * @param collateral  address of accepted collateral for this RWA(e.g WETH, WBTC e.t.c)
+     * @param bond        address of RWA issued bond
+     * @param apy         interest rate paid on bond yearly in fraction scaled to 18 decimals(e.g 5% =(5/ 100) * 10 ** 18)
+     * @param issuingDocs ipfs reference for RWA docs(e.g Qmrtys.....)
+     * @param frequency   time frequency at which interest coupon on bond is paid to bond purchasers (e.g every month, every hour )
+     * @param faceValue   RWA loan value in USD scaled to 18 decimals(e.g 5000 USD = (5000 * 10 ** 18))
+     * @param factory     address of factory contract used to set issued bond time in seconds
      **/
     function submitNewRWA(
         address asset,
+        address collateral,
         address bond,
         uint256 apy,
         string memory issuingDocs,
         uint256 frequency,
+        uint256 faceValue,
         address factory
     ) nonReentrant external {
         uint256 tenure = Factory(factory).getBondTerm(bond);
         //verify submitNewRWA params
         require(
-            asset != address(0x0) &&
+            asset != address(0x0) && collateral != address(0x0) &&
                 Bond(bond).getIssuer() == msg.sender &&
                 apy > 0 &&
                 frequency > 0 && 
-                tenure > 0,
+                tenure > 0 && faceValue > 0, 
             "Invalid request"
         );
+        uint256 secondsPerYear = 31_536_000 * 1e18;
+        uint256 borrowRate = comet.getBorrowRate(comet.getUtilization()); 
+        uint256 borrowAPR = borrowRate  * secondsPerYear / 1e18;
+        require(apy >= borrowAPR, "Invalid APY");
         //if issuer has no bond issued for this RWA, issue bond
-        if (assets[msg.sender][asset].bond == address(0x0)) {
+        if (assets[msg.sender][bond].asset == address(0x0)) {
             //record issued bond data
             RWA.Asset memory rwa = RWA.Asset({
                 bond: bond,
+                asset: asset,
                 apy: apy,
                 issuingDocs: issuingDocs,
                 couponFrequency: frequency,
+                faceValue: faceValue,
+                collateral: collateral,
                 tenure: tenure,
                 borrowed: 0
             });
-            assets[msg.sender][asset] = rwa;
-            emit NewRWA(msg.sender, asset, bond, apy, issuingDocs, frequency, tenure);
-        }         
+            assets[msg.sender][bond] = rwa;
+            emit NewRWA(msg.sender, asset, collateral, bond, apy, issuingDocs, frequency, faceValue, tenure);
+        }        
     }
 
     /**
@@ -134,23 +151,34 @@ contract VerifiedMarkets is ReentrancyGuard {
         address issuer, 
         address factory
     ) nonReentrant external {
-        //verify bond's issuer is the caller
+        //verify bond is valid
         address rwaBondIssuer = Bond(bond).getIssuer();
         require(
             rwaBondIssuer != address(0x0),
             "Invalid issuer"
         );
+        ( , , , , uint256 timeOfIssue) = BondIssuer(issuer).getBondIssues(rwaBondIssuer, bond);
+        //verify bond tenure;
+        require(
+            assets[rwaBondIssuer][bond].tenure > 0 &&
+           block.timestamp < Math.add(timeOfIssue, assets[rwaBondIssuer][bond].tenure),
+            "Invalid Bond"
+        );
         uint256 amount;
         bytes32 currency;
         ( , amount, currency, ) = BondIssuer(issuer).getBondPurchases(msg.sender, bond);
         address collateral = Factory(factory).getCurrencyToken(currency);
-        ( , , , currency, ) = BondIssuer(issuer).getBondIssues(rwaBondIssuer, bond);
-        address asset = Factory(factory).getCurrencyToken(currency);
+        //extract unused amount only not total amount bought
+        amount = Math.sub(amount, deposits[msg.sender][bond][collateral]); //since tenure is not reached deposit will not be zero unless it first time posting collateral
         //verify postCollateral params
         require(
                 collateral != address(0x0) &&
                 amount > 0,
             "No collateral"
+        );
+        require(
+                collateral == assets[rwaBondIssuer][bond].collateral,
+            "Unaccepted collateral"
         );
         //check if amount of collateral supplied does not breach supply cap
         (uint128 totalSupply, ) = comet.totalsCollateral(collateral);
@@ -159,10 +187,10 @@ contract VerifiedMarkets is ReentrancyGuard {
         bool updated = false;
         ERC20(collateral).approve(address(comet), amount);
         //issuer can only update collateral amount for existing collateral
-        if(guarantees[rwaBondIssuer][asset].collateral == collateral){
+        if(guarantees[rwaBondIssuer][bond].collateral == collateral){
             //supply collateral on comet and verify supply cap is not breached
             comet.supplyFrom(address(this), bond, collateral, amount);
-            guarantees[rwaBondIssuer][asset].collateralAmount += amount;
+            guarantees[rwaBondIssuer][bond].collateralAmount += amount;
             updated = true;
             deposits[msg.sender][bond][collateral] += amount;
         }
@@ -175,82 +203,89 @@ contract VerifiedMarkets is ReentrancyGuard {
                 collateral: collateral,
                 collateralAmount: amount                
             });
-            guarantees[rwaBondIssuer][asset] = guarantee;
+            guarantees[rwaBondIssuer][bond] = guarantee;
             deposits[msg.sender][bond][collateral] = amount;
             lenders[bond].push(msg.sender);
         }
-        emit PostedCollateral(msg.sender, asset, collateral, amount);
+        emit PostedCollateral(msg.sender, bond, collateral, amount);
     }
 
     /**
      * @notice Called by RWA issuer to to borrow base asset from Compound
-     * @param asset       RWA for which base asset is borrowed
+     * @param bond       RWA bond for which base asset is borrowed
      **/
-    function borrowBase(address asset) nonReentrant external {
-        address bond = assets[msg.sender][asset].bond;
+    function borrowBase(address bond) nonReentrant external {
         //check if the account has enough collateral to borrow against
-        require(comet.isBorrowCollateralized(bond)==true, "No collateral"); 
+        require(guarantees[msg.sender][bond].collateralAmount > 0, "No collateral"); 
+        require(comet.isBorrowCollateralized(bond)==true, "No collateral");  //this will always be true till calculation for borrow is done???
         //check if current borrowing rate is lower than the issuer's offered rate  
-        uint256 SecondsPerYear = 31_536_000 * 1e18;
-        uint256 BorrowRate = comet.getBorrowRate(comet.getUtilization()); 
-        uint256 BorrowAPR = BorrowRate  * SecondsPerYear / 1e18;
-        require(assets[msg.sender][asset].apy >= BorrowAPR, "Borrow APY");
+        uint256 secondsPerYear = 31_536_000 * 1e18;
+        uint256 borrowRate = comet.getBorrowRate(comet.getUtilization()); 
+        uint256 borrowAPR = borrowRate  * secondsPerYear / 1e18;
+        require(assets[msg.sender][bond].apy >= borrowAPR, "Invalid APY");
         address baseToken = comet.baseToken();
         //determine amount that can be borrowed
-        uint256 balance;
-        balance = comet.collateralBalanceOf(bond, guarantees[msg.sender][asset].collateral);
-        Comet.AssetInfo memory info = comet.getAssetInfoByAddress(guarantees[msg.sender][asset].collateral);
-        uint256 collateralUsd =  guarantees[msg.sender][asset].collateralAmount *  comet.getPrice(info.priceFeed) / info.scale;
-        uint256 _amount = info.borrowCollateralFactor * collateralUsd * comet.baseScale() / 1e18; // borrowCollateralFactor is 18 decimals
-        uint256 amount = _amount / comet.getPrice(comet.baseTokenPriceFeed()); //collateralUsd was in 8 decimals since getPrice is 8 decimals
+        Comet.AssetInfo memory info = comet.getAssetInfoByAddress(guarantees[msg.sender][bond].collateral);
+        uint256 _amount =  guarantees[msg.sender][bond].collateralAmount * info.borrowCollateralFactor / 1e18; //multiply with borrowFactor(18 Decimals) to upscale first then downscale with 1e18 since borrowFactor is always 18 Decimals
+        uint256 _amountUsd = _amount  * comet.baseScale() * comet.getPrice(info.priceFeed) / info.scale; //upscale with baseToken scale, get the USD price of the upscaled amount then downscale with collateral scale (will give amount in baseToken scale but also expressed in oracle price scale(8 decimals))
+        uint256 amount = _amountUsd / comet.getPrice(comet.baseTokenPriceFeed()); //downscale with price scale to get only baseScale amount, also get equivalent amount using baseToken price
         //verify borrowBase params
         require(
             amount > comet.baseBorrowMin(),
             "Base minimum"
         );
         //withdraw base from comet and check for non negative liquidity
-        comet.withdrawFrom(bond, address(this), baseToken, amount);        
+        comet.withdrawFrom(bond, address(this), baseToken, amount);  
+        //clear collateralAmount
+        guarantees[msg.sender][bond].collateralAmount = 0;     
         //keep reserve of base token by discounting as a zero coupon bond
         // compute (1 + r)^t in decimals of base tokens
-        uint256 base = 1e18 + assets[msg.sender][asset].apy; 
-        uint256 discountFactor = FixedPoint.powUp(base, assets[msg.sender][asset].tenure); // fixed-point power
+        uint256 balance;
+        uint256 base = 1e18 + assets[msg.sender][bond].apy; 
+        uint256 discountFactor = FixedPoint.powUp(base, assets[msg.sender][bond].tenure); // fixed-point power
         balance = FixedPoint.divDown(amount, discountFactor); // a / (1+r)^t
-        assets[msg.sender][asset].borrowed += balance;
+        assets[msg.sender][bond].borrowed += balance;
         //transfer borrowed amount to borrower
         ERC20(baseToken).transfer(msg.sender, balance);
-        ERC20(baseToken).approve(address(comet), Math.sub(amount, balance));
+        uint256 suppliedBaseWithInterest = comet.balanceOf(address(this));
+        if(Math.sub(amount, balance) > 0) {
+             ERC20(baseToken).approve(address(comet), Math.sub(amount, balance));
         //deposit balance of base token to earn interest
         comet.supplyFrom(address(this), address(this), baseToken, Math.sub(amount, balance));
+        }
         //take a snapshot of base balance for the account
-        balanceSnapshots[bond].push(RWA.BalanceSnapshot(block.timestamp, comet.borrowBalanceOf(bond)));
-        emit Borrowed(msg.sender, baseToken, balance, asset);
+        balanceSnapshots[bond] = RWA.BalanceSnapshot(block.timestamp, comet.borrowBalanceOf(bond), Math.add(balanceSnapshots[bond].invested, Math.sub(comet.balanceOf(address(this)),  suppliedBaseWithInterest)));
+        totalBaseSupplied += Math.sub(comet.balanceOf(address(this)),  suppliedBaseWithInterest);
+        emit Borrowed(msg.sender, baseToken, balance, bond);
     }
 
 
     /**
      * @notice Called by RWA issuer to repay base asset to Compound and withdraw collateral posted earlier
-     * @param asset       RWA for which base asset is paid back
+     * @param bond       RWA bond for which base asset is paid back
      * @param amount      amount of base asset paid back
      **/
-    function repayBase(address asset, uint256 amount) nonReentrant external {
+    function repayBase(address bond, uint256 amount) nonReentrant external {
         //verify repayBase params
-        address bond = assets[msg.sender][asset].bond;
-        require(bond != address(0x0), "Invalid Bond");  
-        uint256 borrowed = assets[msg.sender][asset].borrowed;      
+        require(amount > 0, "Invalid Amount");  
+        uint256 borrowed = assets[msg.sender][bond].borrowed;      
         require(borrowed > 0, "Invalid Borrowed");  
         // compute (1 + r)^t in decimals of base tokens
         uint256 investedAmount;
-        uint256 base = 1e18 + assets[msg.sender][asset].apy; // 1 + r
-        uint256 growthFactor = FixedPoint.powUp(base, assets[msg.sender][asset].tenure); // (1 + r)^t
+        uint256 base = 1e18 + assets[msg.sender][bond].apy; // 1 + r
+        uint256 growthFactor = FixedPoint.powUp(base, assets[msg.sender][bond].tenure); // (1 + r)^t
         if(borrowed >= amount) {
-             investedAmount = FixedPoint.mulUp(amount, growthFactor); // balance * (1 + r)^t
+           uint256 amountAfterTenure = FixedPoint.mulUp(amount, growthFactor); // balance * (1 + r)^t
+           investedAmount = Math.sub(amountAfterTenure, amount);
         }else{
-            investedAmount = FixedPoint.mulUp(borrowed, growthFactor);
+            uint256 amountAfterTenure = FixedPoint.mulUp(borrowed, growthFactor);
+             investedAmount = Math.sub(amountAfterTenure, borrowed);
         }
         address baseToken = comet.baseToken();
         //pay back base token from issuer to comet
         comet.supplyFrom(msg.sender, bond, baseToken, amount);
         //withdraw invested base token from comet to this address
+        if(investedAmount > 0 && comet.balanceOf(address(this)) >= investedAmount) {
         comet.withdrawFrom(
             address(this),
             address(this),
@@ -260,56 +295,91 @@ contract VerifiedMarkets is ReentrancyGuard {
         //pay back invested base token from this contract
         ERC20(baseToken).approve(address(comet), investedAmount);
         comet.supplyFrom(address(this), bond, baseToken, investedAmount);
-        //update issuer's borrowed amount
-        if(borrowed >= amount) {
-           assets[msg.sender][asset].borrowed -= amount;
-        }else{
-            assets[msg.sender][asset].borrowed = 0;
         }
-        //withdraw collateral
-        address collateral = guarantees[msg.sender][asset].collateral;
+        address collateral = guarantees[msg.sender][bond].collateral;
+        uint256 postedCollateral = Math.sub(comet.collateralBalanceOf(bond, collateral), guarantees[msg.sender][bond].collateralAmount); //track only used up collateralAmount leave out excess or unborrowed
+        uint256 amountToWithdraw;
+        //update issuer's borrowed amount
+        if(comet.borrowBalanceOf(bond) > 0) {
+          amountToWithdraw = 0;
+           //incase of partial repayment but amount paid greater than borrowed(due to high interest amount)
+            if(assets[msg.sender][bond].borrowed >= amount) {
+             assets[msg.sender][bond].borrowed -= amount;
+            }else{
+                assets[msg.sender][bond].borrowed = 0;
+            }
+        }else{
+            //full repayment(withdraw all posted collateral back)
+            amountToWithdraw =  postedCollateral;
+            assets[msg.sender][bond].borrowed = 0;
+        }
+       
         //withdraw collateral from comet check for non negative liquidity
-        comet.withdrawFrom(
+       if(amountToWithdraw > 0) {
+         comet.withdrawFrom(
             bond,
             address(this),
             collateral,
-            guarantees[msg.sender][asset].collateralAmount
+            amountToWithdraw
         );
-        emit Repaid(msg.sender, baseToken, amount);
+       }
+        emit Repaid(msg.sender, baseToken, amount, bond);
     }
 
     /**
      * @notice Called by Bond purchasers (lenders) to withdraw Collateral redeemed by Bond issuers (borrowers)
      * @param bond      address of Bond token issued
      * @param issuer    address of Bond issuing contract
-     * @param factory   address of Factory contract
      **/
-    function withdrawCollateral(address bond, address issuer, address factory) nonReentrant external {
-        ( , , , , uint256 timeOfIssue) = BondIssuer(issuer).getBondIssues(Bond(bond).getIssuer(), bond);
-        require(block.timestamp >= Math.add(timeOfIssue, Factory(factory).getBondTerm(bond)), "Invalid redemption");
-        ( , , bytes32 collateralName, ) = BondIssuer(issuer).getBondPurchases(msg.sender, bond);
-        address collateral = Factory(factory).getCurrencyToken(collateralName);
-        ERC20(collateral).transfer(bond, deposits[msg.sender][bond][collateral]);
-        deposits[msg.sender][bond][collateral] = 0;
+    function withdrawCollateral(address bond, address issuer) nonReentrant external {
+         address bondIssuer = Bond(bond).getIssuer();
+        ( , , , , uint256 timeOfIssue) = BondIssuer(issuer).getBondIssues(bondIssuer, bond);
+        address collateral = assets[bondIssuer][bond].collateral;
+        require(collateral != address(0x0), "Invalid Bond");
+        //check withdraw happen after RWA tenure is passed.
+        require(block.timestamp >= Math.add(timeOfIssue, assets[bondIssuer][bond].tenure), "Early Withdrawal"); 
+        if(balanceSnapshots[bond].balance > 0) {
+            //if issuer had borrowed some money, check issuer/borrower had repaid
+            require(assets[bondIssuer][bond].borrowed == 0, "No Repayment");
+            //transfer collateral to bond contract, so lender can reedem bond to get back collateral
+            ERC20(collateral).transfer(bond, deposits[msg.sender][bond][collateral]);
+            //clear lender's deposit
+            deposits[msg.sender][bond][collateral] = 0;
+        }
+        if(balanceSnapshots[bond].balance == 0 && deposits[msg.sender][bond][collateral] > 0){
+            //if no money had been borrowed after tenure(lenders collateral are still on comet)
+            //withdraw lender collateral from comet to bond contract, so lender can reedem bond to get back collateral
+            comet.withdrawFrom(
+                bond,
+                bond,
+                collateral,
+                deposits[msg.sender][bond][collateral]
+            );
+            //reduce RWA collateralAmount to reduce borrow power since it was not used at all
+            guarantees[bondIssuer][bond].collateralAmount = Math.sub(guarantees[bondIssuer][bond].collateralAmount, deposits[msg.sender][bond][collateral]);
+             //clear lender's deposit
+            deposits[msg.sender][bond][collateral] = 0;
+            
+        }
+        
     }
 
     /**
      * @notice Called by RWA issuer to withdraw base asset from Compound and pay Bond purchasers (lenders)
-     * @param asset       RWA for which base asset is withdrawn
+     * @param bond       RWA  bond for which base asset is withdrawn
      * @param collateral  address of collateral supported for bond
      **/
-    function repayLenders(address asset, address collateral) nonReentrant external {
-        address bond = assets[msg.sender][asset].bond;
-        //require(bond!=address(0x0), "Invalid Repayment");
-        uint256 num = balanceSnapshots[bond].length -1;
-        if(Math.sub(balanceSnapshots[bond][num].timestamp, balanceSnapshots[bond][num-1].timestamp) > assets[msg.sender][asset].couponFrequency){
-            uint256 toPay = Math.sub(comet.borrowBalanceOf(bond), balanceSnapshots[bond][num].balance); //this is positive if net interest has accrued
-            toPay = Math.add(toPay, FixedPoint.divDown(balanceSnapshots[bond][0].balance, assets[msg.sender][asset].couponFrequency));//net interest + coupon payment 
+    function repayLenders(address bond, address collateral) nonReentrant external {
+        if(Math.sub(block.timestamp, balanceSnapshots[bond].timestamp) > assets[msg.sender][bond].couponFrequency){
+            uint256 toPay = Math.sub(comet.balanceOf(address(this)), totalBaseSupplied); //this is positive if net interest has accrued
+            toPay = Math.add(toPay, FixedPoint.divDown(balanceSnapshots[bond].balance, assets[msg.sender][bond].couponFrequency));//net interest + coupon payment 
             for(uint256 i=0; i<lenders[bond].length; i++){
                 ERC20(collateral).transfer(lenders[bond][i], FixedPoint.divDown(toPay, deposits[lenders[bond][i]][bond][collateral]));
             }
         } 
     }
+
+    //TODO: add claim rewards function for contract issuer to withdraw/claim reward accumulated on baseToken supply???
 
 }
 
