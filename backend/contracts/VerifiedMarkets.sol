@@ -372,9 +372,9 @@ contract VerifiedMarkets is ReentrancyGuard {
     function repayLenders(address bond, address collateral) nonReentrant external {
         if(Math.sub(block.timestamp, balanceSnapshots[bond].timestamp) > assets[msg.sender][bond].couponFrequency){
             uint256 toPay = Math.sub(comet.balanceOf(address(this)), totalBaseSupplied); //this is positive if net interest has accrued
-            toPay = Math.add(toPay, FixedPoint.divDown(balanceSnapshots[bond].balance, assets[msg.sender][bond].couponFrequency));//net interest + coupon payment 
+            toPay = toPay *  balanceSnapshots[bond].invested /  totalBaseSupplied;
             for(uint256 i=0; i<lenders[bond].length; i++){
-                ERC20(collateral).transfer(lenders[bond][i], FixedPoint.divDown(toPay, deposits[lenders[bond][i]][bond][collateral]));
+                ERC20(comet.baseToken()).transfer(lenders[bond][i], FixedPoint.divDown(toPay, deposits[lenders[bond][i]][bond][collateral]));
             }
         } 
     }
